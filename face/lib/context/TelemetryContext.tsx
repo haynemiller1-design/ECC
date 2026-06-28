@@ -3,13 +3,15 @@ import { createContext, useContext, useReducer, ReactNode } from "react";
 
 export type BiologicalSex = "male" | "female" | null;
 export type SkinType = "oily" | "dry" | "combination" | "sensitive" | null;
+export type UnitSystem = "metric" | "imperial";
 
 export interface TelemetryState {
   age: number | null;
   sex: BiologicalSex;
-  heightCm: number | null;
-  weightKg: number | null;
+  heightCm: number | null;  // always stored in cm regardless of unit system
+  weightKg: number | null;  // always stored in kg regardless of unit system
   skinType: SkinType;
+  unitSystem: UnitSystem;
   step: number;
 }
 
@@ -19,6 +21,7 @@ type Action =
   | { type: "SET_HEIGHT"; payload: number }
   | { type: "SET_WEIGHT"; payload: number }
   | { type: "SET_SKIN_TYPE"; payload: SkinType }
+  | { type: "SET_UNIT_SYSTEM"; payload: UnitSystem }
   | { type: "SET_STEP"; payload: number }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" };
@@ -29,6 +32,7 @@ const initial: TelemetryState = {
   heightCm: null,
   weightKg: null,
   skinType: null,
+  unitSystem: "metric",
   step: 0,
 };
 
@@ -39,6 +43,7 @@ function reducer(state: TelemetryState, action: Action): TelemetryState {
     case "SET_HEIGHT": return { ...state, heightCm: action.payload };
     case "SET_WEIGHT": return { ...state, weightKg: action.payload };
     case "SET_SKIN_TYPE": return { ...state, skinType: action.payload };
+    case "SET_UNIT_SYSTEM": return { ...state, unitSystem: action.payload };
     case "SET_STEP": return { ...state, step: action.payload };
     case "NEXT_STEP": return { ...state, step: state.step + 1 };
     case "PREV_STEP": return { ...state, step: Math.max(0, state.step - 1) };
