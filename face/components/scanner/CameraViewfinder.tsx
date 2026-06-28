@@ -31,6 +31,9 @@ export default function CameraViewfinder() {
         await loadFaceApiModels();
         if (cancelled) return;
         const stream = await navigator.mediaDevices.getUserMedia({
+          // Explicitly disable audio — this app only needs video for facial analysis.
+          // Without audio: false some browser/OS combos may prompt for mic access.
+          audio: false,
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
         });
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
@@ -62,7 +65,15 @@ export default function CameraViewfinder() {
     canvas.height = dimensions.h;
     ctx.drawImage(video, 0, 0, dimensions.w, dimensions.h);
 
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    // Guard: only store genuine canvas-originated data: URLs (never http/blob from external source)
+    if (!imageDataUrl.startsWith("data:image/")) return;
+    // Size guard: reject suspiciously large captures (>4 MB base64 ≈ ~3 MB binary)
+    if (imageDataUrl.length > 4_000_000) {
+      setError("Captured image too large. Try again.");
+      setPhase("error");
+      return;
+    }
     dispatch({ type: "SET_IMAGE", payload: imageDataUrl });
 
     // Detect landmarks on captured frame

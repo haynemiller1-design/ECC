@@ -15,7 +15,7 @@ export default function StepAge() {
           min={13}
           max={99}
           value={state.age ?? ""}
-          onChange={(e) => dispatch({ type: "SET_AGE", payload: parseInt(e.target.value) || 0 })}
+          onChange={(e) => { const v = parseInt(e.target.value); if (Number.isFinite(v) && v >= 13 && v <= 120) dispatch({ type: "SET_AGE", payload: v }); }}
           placeholder="e.g. 24"
           style={{
             flex: 1, padding: "16px 20px", borderRadius: 12,

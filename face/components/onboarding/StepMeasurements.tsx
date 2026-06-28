@@ -126,7 +126,7 @@ export default function StepMeasurements() {
               <input
                 type="range" min={140} max={220} step={1}
                 value={displayHeightCm}
-                onChange={(e) => dispatch({ type: "SET_HEIGHT", payload: parseInt(e.target.value) })}
+                onChange={(e) => { const v = parseInt(e.target.value); if (Number.isFinite(v)) dispatch({ type: "SET_HEIGHT", payload: v }); }}
                 style={{ width: "100%", marginTop: 12, accentColor: "var(--accent-cyan)" }}
               />
               {state.heightCm && (
@@ -211,7 +211,7 @@ export default function StepMeasurements() {
               <input
                 type="range" min={40} max={200} step={1}
                 value={displayWeightKg}
-                onChange={(e) => dispatch({ type: "SET_WEIGHT", payload: parseInt(e.target.value) })}
+                onChange={(e) => { const v = parseInt(e.target.value); if (Number.isFinite(v)) dispatch({ type: "SET_WEIGHT", payload: v }); }}
                 style={{ width: "100%", marginTop: 12, accentColor: "var(--accent-violet)" }}
               />
               {state.weightKg && (

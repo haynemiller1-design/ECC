@@ -103,8 +103,9 @@ export default function ResultsPage() {
           </div>
         </GlassCard>
 
-        {/* Captured face with landmark overlay */}
-        {scan.imageDataUrl && !loading && (
+        {/* Captured face with landmark overlay.
+            src is validated to be a data:image/ URI set by our own canvas capture — never user input. */}
+        {scan.imageDataUrl && scan.imageDataUrl.startsWith("data:image/") && !loading && (
           <GlassCard style={{ marginBottom: 24, padding: 0, overflow: "hidden" }}>
             <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -36,15 +36,46 @@ const initial: TelemetryState = {
   step: 0,
 };
 
+// Clamp a value to [min, max] and reject NaN
+function clamp(v: number, min: number, max: number): number | null {
+  if (!Number.isFinite(v)) return null;
+  return Math.max(min, Math.min(max, Math.round(v * 10) / 10));
+}
+
+const VALID_SEX = new Set<string>(["male", "female"]);
+const VALID_SKIN = new Set<string>(["oily", "dry", "combination", "sensitive"]);
+const VALID_UNIT = new Set<string>(["metric", "imperial"]);
+
 function reducer(state: TelemetryState, action: Action): TelemetryState {
   switch (action.type) {
-    case "SET_AGE": return { ...state, age: action.payload };
-    case "SET_SEX": return { ...state, sex: action.payload };
-    case "SET_HEIGHT": return { ...state, heightCm: action.payload };
-    case "SET_WEIGHT": return { ...state, weightKg: action.payload };
-    case "SET_SKIN_TYPE": return { ...state, skinType: action.payload };
-    case "SET_UNIT_SYSTEM": return { ...state, unitSystem: action.payload };
-    case "SET_STEP": return { ...state, step: action.payload };
+    case "SET_AGE": {
+      const age = clamp(action.payload, 13, 120);
+      return age !== null ? { ...state, age } : state;
+    }
+    case "SET_SEX":
+      return action.payload && VALID_SEX.has(action.payload)
+        ? { ...state, sex: action.payload }
+        : state;
+    case "SET_HEIGHT": {
+      const h = clamp(action.payload, 50, 280); // cm bounds: ~20in to ~9ft
+      return h !== null ? { ...state, heightCm: h } : state;
+    }
+    case "SET_WEIGHT": {
+      const w = clamp(action.payload, 15, 500); // kg bounds: ~33lbs to ~1100lbs
+      return w !== null ? { ...state, weightKg: w } : state;
+    }
+    case "SET_SKIN_TYPE":
+      return action.payload && VALID_SKIN.has(action.payload)
+        ? { ...state, skinType: action.payload }
+        : state;
+    case "SET_UNIT_SYSTEM":
+      return action.payload && VALID_UNIT.has(action.payload)
+        ? { ...state, unitSystem: action.payload }
+        : state;
+    case "SET_STEP": {
+      const s = clamp(action.payload, 0, 10);
+      return s !== null ? { ...state, step: s } : state;
+    }
     case "NEXT_STEP": return { ...state, step: state.step + 1 };
     case "PREV_STEP": return { ...state, step: Math.max(0, state.step - 1) };
     default: return state;
