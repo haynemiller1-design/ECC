@@ -8,6 +8,7 @@ import { computeSymmetry, HemifaceDelta } from "@/lib/scoring/symmetry";
 import { computeBoneMetrics, BoneMetrics } from "@/lib/scoring/boneMetrics";
 import { computeFacialMetrics, FacialMetrics } from "@/lib/scoring/facialMetrics";
 import { frontalizeLandmarks } from "@/lib/scoring/frontalize";
+import { computeFaceShape, FaceShape } from "@/lib/scoring/faceShape";
 import { calibrateOverall } from "@/lib/scoring/calibrate";
 import GlassCard from "@/components/ui/GlassCard";
 import ScoreRing from "@/components/results/ScoreRing";
@@ -26,6 +27,7 @@ export default function ResultsPage() {
   const [symScore, setSymScore] = useState<HemifaceDelta | null>(null);
   const [boneScore, setBoneScore] = useState<BoneMetrics | null>(null);
   const [harmony, setHarmony] = useState<FacialMetrics | null>(null);
+  const [shape, setShape] = useState<FaceShape | null>(null);
   const [pose, setPose] = useState<{ yawDeg: number; rollDeg: number; reliable: boolean } | null>(null);
 
   useEffect(() => {
@@ -41,21 +43,26 @@ export default function ResultsPage() {
       setSymScore(computeSymmetry(lm, fr.yawDeg));
       setBoneScore(computeBoneMetrics(lm, scan.dimorphismMode));
       setHarmony(computeFacialMetrics(lm));
+      setShape(computeFaceShape(lm));
       setLoading(false);
     }, 1200);
     return () => clearTimeout(t);
   }, [hydrated, scan.landmarks, scan.dimorphismMode, router]);
 
-  // Overall score blends every available measure (teeth folded in when present).
+  // Overall score blends every available measure. Facial definition (fullness)
+  // and skin quality carry real weight because they're what most separates an
+  // average face from a standout one — proportions alone barely differ.
   const aggregate = (() => {
-    if (!grScore || !symScore || !boneScore || !harmony) return 0;
+    if (!grScore || !symScore || !boneScore || !harmony || !shape) return 0;
     const parts: [number, number][] = [
-      [grScore.aggregate, 0.25],
-      [harmony.aggregate, 0.20],
-      [symScore.symmetryScore, 0.20],
-      [boneScore.aggregateBoneScore, 0.20],
+      [grScore.aggregate, 0.16],
+      [harmony.aggregate, 0.13],
+      [symScore.symmetryScore, 0.14],
+      [boneScore.aggregateBoneScore, 0.12],
+      [shape.definition, 0.22],
     ];
-    if (scan.teeth) parts.push([scan.teeth.aggregate, 0.15]);
+    if (scan.skin) parts.push([scan.skin.clarityScore, 0.13]);
+    if (scan.teeth) parts.push([scan.teeth.aggregate, 0.10]);
     const wSum = parts.reduce((s, [, w]) => s + w, 0);
     const raw = parts.reduce((s, [v, w]) => s + v * w, 0) / wSum;
     // Spread the raw average around the middle so the 1-10 scale is usable.
@@ -120,6 +127,8 @@ export default function ResultsPage() {
                   <NeonBadge label={`Symmetry ${symScore!.symmetryScore.toFixed(1)}`} color="cyan" />
                   <NeonBadge label={`Structure ${boneScore!.aggregateBoneScore.toFixed(1)}`} color="green" />
                   {harmony && <NeonBadge label={`Features ${harmony.aggregate.toFixed(1)}`} color="violet" />}
+                  {shape && <NeonBadge label={`Definition ${shape.definition.toFixed(1)}`} color="cyan" />}
+                  {scan.skin && <NeonBadge label={`Skin ${scan.skin.clarityScore.toFixed(1)}`} color="green" />}
                   {scan.teeth && <NeonBadge label={`Smile ${scan.teeth.aggregate.toFixed(1)}`} color="green" />}
                 </div>
                 <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7 }}>
