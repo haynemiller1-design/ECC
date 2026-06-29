@@ -8,6 +8,7 @@ import { computeSymmetry, HemifaceDelta } from "@/lib/scoring/symmetry";
 import { computeBoneMetrics, BoneMetrics } from "@/lib/scoring/boneMetrics";
 import { computeFacialMetrics, FacialMetrics } from "@/lib/scoring/facialMetrics";
 import { frontalizeLandmarks } from "@/lib/scoring/frontalize";
+import { calibrateOverall } from "@/lib/scoring/calibrate";
 import GlassCard from "@/components/ui/GlassCard";
 import ScoreRing from "@/components/results/ScoreRing";
 import RatioBreakdown from "@/components/results/RatioBreakdown";
@@ -56,7 +57,9 @@ export default function ResultsPage() {
     ];
     if (scan.teeth) parts.push([scan.teeth.aggregate, 0.15]);
     const wSum = parts.reduce((s, [, w]) => s + w, 0);
-    return Math.round(parts.reduce((s, [v, w]) => s + v * w, 0) / wSum * 10) / 10;
+    const raw = parts.reduce((s, [v, w]) => s + v * w, 0) / wSum;
+    // Spread the raw average around the middle so the 1-10 scale is usable.
+    return calibrateOverall(raw);
   })();
 
   return (

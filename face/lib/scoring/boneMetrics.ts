@@ -1,4 +1,5 @@
 import { LandmarkPoint } from "./goldenRatio";
+import { scoreCloseness } from "./calibrate";
 
 export interface BoneMetrics {
   bizygomaticScore: number; // face width vs length ratio
@@ -26,8 +27,7 @@ export function computeBoneMetrics(
 
   // Ideal ratio differs by sex
   const idealWidthToHeight = sex === "male" ? 0.78 : 0.72;
-  const bizygDev = Math.abs(widthToHeight - idealWidthToHeight) / idealWidthToHeight;
-  const bizygomaticScore = Math.max(0, Math.min(10, (1 - bizygDev) * 10));
+  const bizygomaticScore = scoreCloseness(widthToHeight, idealWidthToHeight, 0.22);
 
   // Gonial angle: angle at pts 4 & 12 (jaw angle region)
   // Approximate using vector from pt 5→4 (jaw) and pt 4→5's y component
@@ -42,8 +42,7 @@ export function computeBoneMetrics(
 
   // Ideal gonial angle: male ~115°, female ~120°
   const idealGonial = sex === "male" ? 115 : 120;
-  const gonialDev = Math.abs(gonialAngle - idealGonial) / idealGonial;
-  const gonialScore = Math.max(0, Math.min(10, (1 - gonialDev) * 10));
+  const gonialScore = scoreCloseness(gonialAngle, idealGonial, 0.22);
 
   // Jawline definition: chin projection (distance from pt 8 to horizontal line of pt 6-10)
   const jawLineY = (p[6].y + p[10].y) / 2;
@@ -51,8 +50,7 @@ export function computeBoneMetrics(
   const relProjection = chinProjection / faceHeight;
   // Ideal projection: ~18-22% of face height for sharp chin
   const idealProjection = sex === "male" ? 0.22 : 0.18;
-  const projDev = Math.abs(relProjection - idealProjection) / idealProjection;
-  const jawlineScore = Math.max(0, Math.min(10, (1 - projDev) * 10));
+  const jawlineScore = scoreCloseness(relProjection, idealProjection, 0.35);
 
   const aggregateBoneScore = Math.round(
     (bizygomaticScore * 0.35 + gonialScore * 0.35 + jawlineScore * 0.3) * 10

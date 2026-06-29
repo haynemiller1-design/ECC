@@ -15,8 +15,10 @@ export interface FacialMetrics {
   aggregate: number; // 0-10 mean of items
 }
 
+// Gentle (Gaussian) falloff: deviation == tol scores ~5, never a hard 0.
 function devScore(dev: number, tol: number): number {
-  return Math.round(Math.max(0, Math.min(10, (1 - dev / tol) * 10)) * 10) / 10;
+  const s = 10 * Math.exp(-0.5 * Math.pow((dev / tol) * 1.1774, 2));
+  return Math.round(Math.max(1, Math.min(10, s)) * 10) / 10;
 }
 
 export function computeFacialMetrics(lm: LandmarkPoint[]): FacialMetrics {

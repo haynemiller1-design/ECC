@@ -1,5 +1,6 @@
-// Deterministic golden ratio scoring engine.
+// Deterministic facial-proportion scoring engine.
 // Identical landmark sets always produce identical scores — no randomness.
+import { scoreCloseness } from "./calibrate";
 
 export const PHI = 1.618033988749895;
 
@@ -22,11 +23,6 @@ function dist(a: LandmarkPoint, b: LandmarkPoint): number {
   return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
 }
 
-function scoreRatio(actual: number, ideal: number): number {
-  if (ideal === 0) return 0;
-  const deviation = Math.abs(actual - ideal) / ideal;
-  return Math.max(0, Math.min(10, (1 - deviation) * 10));
-}
 
 // face-api.js 68-point landmark indices (0-based):
 // Trichion (hairline): approximated as midpoint of points 0 & 16 shifted up — use point 27 (nose bridge top) as proxy
@@ -45,76 +41,38 @@ export function computeGoldenRatioScore(landmarks: LandmarkPoint[]): GoldenRatio
 
   const p = landmarks;
 
-  // Vertical facial thirds
-  // Estimate trichion: extrapolate above nasion by the nasion-to-subnasale distance
   const nasion = p[27];
   const subnasale = p[33];
   const gnathion = p[8];
   const nasionToSubnasale = dist(nasion, subnasale);
   const subnasaleToGnathion = dist(subnasale, gnathion);
-  const trichionEstimated: LandmarkPoint = {
-    x: nasion.x,
-    y: nasion.y - nasionToSubnasale * PHI,
-  };
-  const trichionToNasion = dist(trichionEstimated, nasion);
+  const faceWidth = dist(p[1], p[15]);
 
-  const r1: RatioResult = {
-    name: "Upper Face Balance",
-    actual: trichionToNasion / nasionToSubnasale,
-    ideal: 1.0,
-    score: 0,
-    deviation: 0,
-  };
-  r1.deviation = Math.abs(r1.actual - r1.ideal) / r1.ideal;
-  r1.score = scoreRatio(r1.actual, r1.ideal);
+  // Eye measurements
+  const intercanthalDist = dist(p[39], p[42]);
+  const avgEyeWidth = (dist(p[36], p[39]) + dist(p[42], p[45])) / 2;
+  // Nose / mouth widths
+  const noseWidth = dist(p[31], p[35]);
+  const mouthWidth = dist(p[48], p[54]);
 
-  const r2: RatioResult = {
-    name: "Lower Face Balance",
-    actual: nasionToSubnasale / subnasaleToGnathion,
-    ideal: PHI,
-    score: 0,
-    deviation: 0,
-  };
-  r2.deviation = Math.abs(r2.actual - r2.ideal) / r2.ideal;
-  r2.score = scoreRatio(r2.actual, r2.ideal);
+  // Each metric is measurable from real landmarks, with a target drawn from
+  // anthropometric norms and a tolerance tuned so an ordinary face sits mid-scale.
+  const mk = (name: string, actual: number, ideal: number, relTol: number): RatioResult => ({
+    name, actual, ideal, deviation: ideal ? Math.abs(actual - ideal) / Math.abs(ideal) : 0,
+    score: scoreCloseness(actual, ideal, relTol),
+  });
 
-  // Intercanthal distance vs. single eye width
-  const leftEyeInner = p[39]; const leftEyeOuter = p[36];
-  const rightEyeInner = p[42]; const rightEyeOuter = p[45];
-  const intercanthalDist = dist(leftEyeInner, rightEyeInner);
-  const leftEyeWidth = dist(leftEyeOuter, leftEyeInner);
-  const rightEyeWidth = dist(rightEyeInner, rightEyeOuter);
-  const avgEyeWidth = (leftEyeWidth + rightEyeWidth) / 2;
-  const r3: RatioResult = {
-    name: "Eye Spacing",
-    actual: intercanthalDist / avgEyeWidth,
-    ideal: 1.0,
-    score: 0,
-    deviation: 0,
-  };
-  r3.deviation = Math.abs(r3.actual - r3.ideal) / r3.ideal;
-  r3.score = scoreRatio(r3.actual, r3.ideal);
+  const ratios: RatioResult[] = [
+    // Mid third (nasion→subnasale) vs lower third (subnasale→chin). ~0.80 ideal.
+    mk("Mid-to-Lower Balance", nasionToSubnasale / subnasaleToGnathion, 0.80, 0.26),
+    // Inner-eye gap should be about one eye-width.
+    mk("Eye Spacing", intercanthalDist / avgEyeWidth, 1.0, 0.24),
+    // Nose width ≈ 0.62 of mouth width.
+    mk("Nose & Mouth Width", noseWidth / mouthWidth, 0.62, 0.26),
+    // Mouth width ≈ 0.40 of face width.
+    mk("Mouth & Face Width", mouthWidth / faceWidth, 0.40, 0.26),
+  ];
 
-  // Nose width vs. mouth width
-  const noseLeft = p[31]; const noseRight = p[35];
-  const mouthLeft = p[48]; const mouthRight = p[54];
-  const noseWidth = dist(noseLeft, noseRight);
-  const mouthWidth = dist(mouthLeft, mouthRight);
-  const r4: RatioResult = {
-    name: "Nose & Mouth Width",
-    actual: noseWidth / mouthWidth,
-    ideal: 1 / PHI, // ~0.618
-    score: 0,
-    deviation: 0,
-  };
-  r4.deviation = Math.abs(r4.actual - r4.ideal) / r4.ideal;
-  r4.score = scoreRatio(r4.actual, r4.ideal);
-
-  // Weighted aggregate: R1(0.25) R2(0.25) R3(0.25) R4(0.25)
-  const aggregate = r1.score * 0.25 + r2.score * 0.25 + r3.score * 0.25 + r4.score * 0.25;
-
-  return {
-    aggregate: Math.round(aggregate * 10) / 10,
-    ratios: [r1, r2, r3, r4],
-  };
+  const aggregate = Math.round(ratios.reduce((s, r) => s + r.score, 0) / ratios.length * 10) / 10;
+  return { aggregate, ratios };
 }
