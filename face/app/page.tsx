@@ -57,10 +57,9 @@ export default function LandingPage() {
         <button
           onClick={() => router.push("/onboarding")}
           style={{
-            padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer",
+            padding: "8px 20px", borderRadius: 8, border: "1px solid rgba(139,92,246,0.3)", cursor: "pointer",
             background: "rgba(139,92,246,0.15)", color: "var(--accent-violet)",
             fontSize: 13, fontWeight: 600,
-            border: "1px solid rgba(139,92,246,0.3)",
           } as React.CSSProperties}
         >
           Get Started
