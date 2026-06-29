@@ -4,9 +4,11 @@ import CameraViewfinder from "@/components/scanner/CameraViewfinder";
 export default function ScanPage() {
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", flexDirection: "column",
+      minHeight: "100dvh", width: "100%", maxWidth: "100%", overflowX: "hidden",
+      display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
-      padding: 24, background: "var(--bg-obsidian)",
+      padding: "72px 20px 40px", background: "var(--bg-obsidian)",
+      boxSizing: "border-box",
     }}>
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 32 }}>

@@ -36,7 +36,7 @@ export default function StepAge() {
           placeholder="e.g. 24"
           autoFocus
           style={{
-            flex: 1, padding: "16px 20px", borderRadius: 12,
+            flex: 1, minWidth: 0, padding: "16px 20px", borderRadius: 12,
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.1)",
             color: "var(--text-primary)", fontSize: 24, fontWeight: 700,

@@ -22,13 +22,17 @@ export default function WizardShell({
 
   return (
     <div style={{
-      minHeight: "100vh",
+      minHeight: "100dvh",
+      width: "100%",
+      maxWidth: "100%",
+      overflowX: "hidden",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      padding: "24px",
+      padding: "72px 20px 40px", // top room for the fixed Home button; scroll-safe bottom
       background: "var(--bg-obsidian)",
+      boxSizing: "border-box",
     }}>
       {/* Brand header */}
       <div style={{ marginBottom: 40, textAlign: "center" }}>

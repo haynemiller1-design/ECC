@@ -178,7 +178,8 @@ export default function CameraViewfinder() {
       <div
         style={{
           position: "relative",
-          width: dimensions.w, height: dimensions.h,
+          width: dimensions.w, maxWidth: "100%",
+          aspectRatio: `${dimensions.w} / ${dimensions.h}`,
           borderRadius: 16, overflow: "hidden",
           border: phase === "capturing" || phase === "analyzing" ? "2px solid var(--accent-cyan)" : "2px solid rgba(255,255,255,0.1)",
           boxShadow: phase === "capturing" || phase === "analyzing" ? "0 0 40px rgba(6,182,212,0.3)" : "none",
