@@ -5,6 +5,7 @@ import { useScan } from "@/lib/context/ScanContext";
 import { computeGoldenRatioScore } from "@/lib/scoring/goldenRatio";
 import { computeSymmetry, HemifaceDelta } from "@/lib/scoring/symmetry";
 import { computeBoneMetrics, BoneMetrics } from "@/lib/scoring/boneMetrics";
+import { frontalizeLandmarks } from "@/lib/scoring/frontalize";
 import GlassCard from "@/components/ui/GlassCard";
 import BoneStructureCard from "@/components/dashboard/BoneStructureCard";
 import SkinQualityCard from "@/components/dashboard/SkinQualityCard";
@@ -24,9 +25,11 @@ export default function DashboardPage() {
     if (!hydrated) return; // wait for sessionStorage restore before deciding to redirect
     if (!scan.landmarks) { router.replace("/scan"); return; }
     const t = setTimeout(() => {
-      setBone(computeBoneMetrics(scan.landmarks!, scan.dimorphismMode));
-      setSym(computeSymmetry(scan.landmarks!));
-      setGrScore(computeGoldenRatioScore(scan.landmarks!).aggregate);
+      const fr = frontalizeLandmarks(scan.landmarks!);
+      const lm = fr.landmarks;
+      setBone(computeBoneMetrics(lm, scan.dimorphismMode));
+      setSym(computeSymmetry(lm, fr.yawDeg));
+      setGrScore(computeGoldenRatioScore(lm).aggregate);
       setLoading(false);
     }, 800);
     return () => clearTimeout(t);

@@ -7,6 +7,7 @@ import { computeGoldenRatioScore, GoldenRatioScore } from "@/lib/scoring/goldenR
 import { computeSymmetry, HemifaceDelta } from "@/lib/scoring/symmetry";
 import { computeBoneMetrics, BoneMetrics } from "@/lib/scoring/boneMetrics";
 import { computeFacialMetrics, FacialMetrics } from "@/lib/scoring/facialMetrics";
+import { frontalizeLandmarks } from "@/lib/scoring/frontalize";
 import GlassCard from "@/components/ui/GlassCard";
 import ScoreRing from "@/components/results/ScoreRing";
 import RatioBreakdown from "@/components/results/RatioBreakdown";
@@ -24,16 +25,21 @@ export default function ResultsPage() {
   const [symScore, setSymScore] = useState<HemifaceDelta | null>(null);
   const [boneScore, setBoneScore] = useState<BoneMetrics | null>(null);
   const [harmony, setHarmony] = useState<FacialMetrics | null>(null);
+  const [pose, setPose] = useState<{ yawDeg: number; rollDeg: number; reliable: boolean } | null>(null);
 
   useEffect(() => {
     if (!hydrated) return; // wait for sessionStorage restore before deciding to redirect
     if (!scan.landmarks) { router.replace("/scan"); return; }
     // Simulate metric processing delay for UX
     const t = setTimeout(() => {
-      setGrScore(computeGoldenRatioScore(scan.landmarks!));
-      setSymScore(computeSymmetry(scan.landmarks!));
-      setBoneScore(computeBoneMetrics(scan.landmarks!, scan.dimorphismMode));
-      setHarmony(computeFacialMetrics(scan.landmarks!));
+      // Correct head tilt/turn first so an angled photo still scores fairly.
+      const fr = frontalizeLandmarks(scan.landmarks!);
+      const lm = fr.landmarks;
+      setPose({ yawDeg: fr.yawDeg, rollDeg: fr.rollDeg, reliable: fr.reliable });
+      setGrScore(computeGoldenRatioScore(lm));
+      setSymScore(computeSymmetry(lm, fr.yawDeg));
+      setBoneScore(computeBoneMetrics(lm, scan.dimorphismMode));
+      setHarmony(computeFacialMetrics(lm));
       setLoading(false);
     }, 1200);
     return () => clearTimeout(t);
@@ -75,6 +81,21 @@ export default function ResultsPage() {
             Your facial analysis · {tele.sex === "male" ? "Male" : "Female"} reference
           </p>
         </div>
+
+        {/* Pose-correction note when the analyzed photo was angled */}
+        {!loading && pose && (Math.abs(pose.yawDeg) > 14 || Math.abs(pose.rollDeg) > 10) && (
+          <div style={{
+            marginBottom: 16, padding: "10px 14px", borderRadius: 10,
+            background: pose.reliable ? "rgba(6,182,212,0.07)" : "rgba(245,158,11,0.08)",
+            border: `1px solid ${pose.reliable ? "rgba(6,182,212,0.2)" : "rgba(245,158,11,0.25)"}`,
+          }}>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
+              {pose.reliable
+                ? `📐 Your photo was turned about ${Math.abs(Math.round(pose.yawDeg))}° — we corrected for it so the rating reflects a straight-on view. A face-forward photo is still the most accurate.`
+                : `📐 This photo is turned quite far (~${Math.abs(Math.round(pose.yawDeg))}°). We corrected as much as possible, but for an accurate rating, retake it looking straight at the camera.`}
+            </p>
+          </div>
+        )}
 
         {/* Aggregate score + face preview */}
         <GlassCard glow="violet" style={{ display: "flex", gap: 32, alignItems: "center", marginBottom: 24 }}>
@@ -166,7 +187,7 @@ export default function ResultsPage() {
             <>
               <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
                 {symScore!.deltaMap.slice(0, 5).map((d) => {
-                  const s = Math.round(Math.max(0, Math.min(10, (1 - d.percentDiff / 30) * 10)) * 10) / 10;
+                  const s = d.score;
                   return (
                     <div key={d.feature} style={{ flex: "1 1 60px", textAlign: "center", minWidth: 56 }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color: s >= 8 ? "var(--accent-green)" : s >= 6 ? "var(--accent-cyan)" : "var(--accent-violet)" }}>
