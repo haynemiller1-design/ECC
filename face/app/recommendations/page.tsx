@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTelemetry } from "@/lib/context/TelemetryContext";
-import { useScan } from "@/lib/context/ScanContext";
 import { getClinicalRecommendations, getBoneRecommendations, ClinicalEntry, BoneRecommendation, ConcernType, BoneTarget } from "@/lib/clinical/database";
 import GlassCard from "@/components/ui/GlassCard";
 import IngredientCard from "@/components/recommendations/IngredientCard";
@@ -28,7 +27,6 @@ function inferBoneTargets(/* future: pass bone score */): BoneTarget[] {
 
 export default function RecommendationsPage() {
   const { state: tele } = useTelemetry();
-  const { state: scan } = useScan();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [skinRecs, setSkinRecs] = useState<ClinicalEntry[]>([]);

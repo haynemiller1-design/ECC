@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTelemetry, UnitSystem } from "@/lib/context/TelemetryContext";
 
 // Conversion helpers
@@ -9,7 +9,7 @@ const ftInToCm = (ft: number, inches: number) => Math.round((ft * 30.48) + (inch
 // Convert cm to feet+inches, carrying 12″ up to the next foot so we never
 // display a nonsensical value like 5′ 12″.
 function cmToFtIn(cm: number): { ft: number; inch: number } {
-  let totalIn = Math.round(cm / 2.54);
+  const totalIn = Math.round(cm / 2.54);
   const ft = Math.floor(totalIn / 12);
   const inch = totalIn - ft * 12;
   return { ft, inch };
@@ -67,17 +67,20 @@ export default function StepMeasurements() {
   const [inchStr, setInchStr] = useState(state.heightCm ? String(cmToInRemainder(state.heightCm)) : "");
   const [lbsStr, setLbsStr] = useState(state.weightKg ? String(kgToLbs(state.weightKg)) : "");
 
-  // When the unit system flips, refill the newly-shown fields from stored metric values.
-  useEffect(() => {
-    if (unit === "imperial") {
+  // When the user flips the unit system, refill the newly-shown fields from the
+  // stored metric values. Done here (event handler) rather than in an effect so
+  // there's no setState-in-effect cascade.
+  function handleUnitChange(v: UnitSystem) {
+    if (v === unit) return;
+    if (v === "imperial") {
       if (state.heightCm) { setFeetStr(String(cmToFt(state.heightCm))); setInchStr(String(cmToInRemainder(state.heightCm))); }
       if (state.weightKg) setLbsStr(String(kgToLbs(state.weightKg)));
     } else {
       if (state.heightCm) setCmStr(String(state.heightCm));
       if (state.weightKg) setKgStr(String(state.weightKg));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unit]);
+    dispatch({ type: "SET_UNIT_SYSTEM", payload: v });
+  }
 
   // ── Metric handlers ──
   function handleCm(v: string) {
@@ -131,7 +134,7 @@ export default function StepMeasurements() {
         Height and weight refine facial volume predictions and contextualize structural proportions.
       </p>
 
-      <UnitToggle value={unit} onChange={(v) => dispatch({ type: "SET_UNIT_SYSTEM", payload: v })} />
+      <UnitToggle value={unit} onChange={handleUnitChange} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 

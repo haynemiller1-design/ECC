@@ -13,7 +13,7 @@ import SkeletonLoader from "@/components/ui/SkeletonLoader";
 import NeonBadge from "@/components/ui/NeonBadge";
 
 export default function DashboardPage() {
-  const { state: scan } = useScan();
+  const { state: scan, hydrated } = useScan();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [bone, setBone] = useState<BoneMetrics | null>(null);
@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [grScore, setGrScore] = useState(0);
 
   useEffect(() => {
+    if (!hydrated) return; // wait for sessionStorage restore before deciding to redirect
     if (!scan.landmarks) { router.replace("/scan"); return; }
     const t = setTimeout(() => {
       setBone(computeBoneMetrics(scan.landmarks!, scan.dimorphismMode));
@@ -29,7 +30,7 @@ export default function DashboardPage() {
       setLoading(false);
     }, 800);
     return () => clearTimeout(t);
-  }, [scan.landmarks, scan.dimorphismMode, router]);
+  }, [hydrated, scan.landmarks, scan.dimorphismMode, router]);
 
   return (
     <div style={{

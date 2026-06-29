@@ -14,7 +14,7 @@ import NeonBadge from "@/components/ui/NeonBadge";
 import LandmarkOverlay from "@/components/scanner/LandmarkOverlay";
 
 export default function ResultsPage() {
-  const { state: scan } = useScan();
+  const { state: scan, hydrated } = useScan();
   const { state: tele } = useTelemetry();
   const router = useRouter();
 
@@ -24,6 +24,7 @@ export default function ResultsPage() {
   const [boneScore, setBoneScore] = useState<BoneMetrics | null>(null);
 
   useEffect(() => {
+    if (!hydrated) return; // wait for sessionStorage restore before deciding to redirect
     if (!scan.landmarks) { router.replace("/scan"); return; }
     // Simulate metric processing delay for UX
     const t = setTimeout(() => {
@@ -36,7 +37,7 @@ export default function ResultsPage() {
       setLoading(false);
     }, 1200);
     return () => clearTimeout(t);
-  }, [scan.landmarks, scan.dimorphismMode, router]);
+  }, [hydrated, scan.landmarks, scan.dimorphismMode, router]);
 
   const aggregate = grScore && symScore && boneScore
     ? Math.round((grScore.aggregate * 0.4 + symScore.symmetryScore * 0.3 + boneScore.aggregateBoneScore * 0.3) * 10) / 10

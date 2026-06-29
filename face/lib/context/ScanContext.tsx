@@ -1,5 +1,7 @@
 "use client";
-import { createContext, useContext, useReducer, ReactNode } from "react";
+import { createContext, useContext, useReducer, useEffect, useState, ReactNode } from "react";
+
+const SESSION_KEY = "visageiq_scan";
 
 export interface Landmark {
   x: number;
@@ -29,6 +31,7 @@ type Action =
   | { type: "SET_LANDMARKS"; payload: Landmark[] }
   | { type: "ADD_CAPTURE"; payload: AngleCapture }
   | { type: "SET_DIMORPHISM"; payload: "male" | "female" }
+  | { type: "HYDRATE"; payload: ScanResult }
   | { type: "RESET" };
 
 const initial: ScanResult = {
@@ -60,6 +63,7 @@ function reducer(state: ScanResult, action: Action): ScanResult {
       return { ...state, captures };
     }
     case "SET_DIMORPHISM": return { ...state, dimorphismMode: action.payload };
+    case "HYDRATE": return { ...initial, ...action.payload };
     case "RESET": return { ...initial };
     default: return state;
   }
@@ -68,12 +72,34 @@ function reducer(state: ScanResult, action: Action): ScanResult {
 const ScanContext = createContext<{
   state: ScanResult;
   dispatch: React.Dispatch<Action>;
+  hydrated: boolean;
 } | null>(null);
 
 export function ScanProvider({ children }: { children: ReactNode }) {
+  // Start from `initial` to match SSR, then restore from storage after mount so
+  // an accidental refresh on /results doesn't bounce the user back to /scan.
   const [state, dispatch] = useReducer(reducer, initial);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (raw) dispatch({ type: "HYDRATE", payload: JSON.parse(raw) as ScanResult });
+    } catch { /* corrupt or blocked storage */ }
+    // Intentional: flag hydration in the same effect as the HYDRATE dispatch so
+    // they batch — consumers never observe hydrated=true with stale state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(state)); }
+    catch { /* quota exceeded (large captures) or storage blocked — non-fatal */ }
+  }, [state, hydrated]);
+
   return (
-    <ScanContext.Provider value={{ state, dispatch }}>
+    <ScanContext.Provider value={{ state, dispatch, hydrated }}>
       {children}
     </ScanContext.Provider>
   );

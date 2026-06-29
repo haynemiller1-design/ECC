@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useReducer, useEffect, ReactNode } from "react";
+import { createContext, useContext, useReducer, useEffect, useState, ReactNode } from "react";
 
 const SESSION_KEY = "visageiq_telemetry";
 
@@ -26,7 +26,8 @@ type Action =
   | { type: "SET_UNIT_SYSTEM"; payload: UnitSystem }
   | { type: "SET_STEP"; payload: number }
   | { type: "NEXT_STEP" }
-  | { type: "PREV_STEP" };
+  | { type: "PREV_STEP" }
+  | { type: "HYDRATE"; payload: TelemetryState };
 
 const initial: TelemetryState = {
   age: null,
@@ -81,6 +82,7 @@ function reducer(state: TelemetryState, action: Action): TelemetryState {
     }
     case "NEXT_STEP": return { ...state, step: state.step + 1 };
     case "PREV_STEP": return { ...state, step: Math.max(0, state.step - 1) };
+    case "HYDRATE": return { ...initial, ...action.payload };
     default: return state;
   }
 }
@@ -88,27 +90,37 @@ function reducer(state: TelemetryState, action: Action): TelemetryState {
 const TelemetryContext = createContext<{
   state: TelemetryState;
   dispatch: React.Dispatch<Action>;
+  hydrated: boolean;
 } | null>(null);
 
-function loadFromSession(): TelemetryState {
-  if (typeof window === "undefined") return initial;
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return initial;
-    const parsed = JSON.parse(raw) as Partial<TelemetryState>;
-    return { ...initial, ...parsed };
-  } catch { return initial; }
-}
-
 export function TelemetryProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, loadFromSession);
+  // Always start from `initial` so the first client render matches the server
+  // (avoids hydration mismatches). Stored state is loaded in an effect below.
+  const [state, dispatch] = useReducer(reducer, initial);
+  const [hydrated, setHydrated] = useState(false);
 
+  // Restore from sessionStorage once, after mount.
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (raw) dispatch({ type: "HYDRATE", payload: JSON.parse(raw) as TelemetryState });
+    } catch { /* corrupt or blocked storage — fall back to initial */ }
+    // Intentional: flag hydration complete in the same effect as the HYDRATE
+    // dispatch so they batch into one render — consumers never observe
+    // hydrated=true with stale state (race-free redirect gating).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHydrated(true);
+  }, []);
+
+  // Persist on change, but only after hydration so we never overwrite stored
+  // data with the transient `initial` state on first paint.
+  useEffect(() => {
+    if (!hydrated) return;
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch { /* storage full or blocked */ }
-  }, [state]);
+  }, [state, hydrated]);
 
   return (
-    <TelemetryContext.Provider value={{ state, dispatch }}>
+    <TelemetryContext.Provider value={{ state, dispatch, hydrated }}>
       {children}
     </TelemetryContext.Provider>
   );
