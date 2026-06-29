@@ -18,10 +18,10 @@ export default function ScanPage() {
           background: "linear-gradient(135deg, #06B6D4, #10B981)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
         }}>
-          Take Your Selfie
+          Full Face Scan
         </h1>
-        <p style={{ color: "var(--text-muted)", marginTop: 8, fontSize: 14 }}>
-          Look straight ahead in good lighting — your photo stays on your device.
+        <p style={{ color: "var(--text-muted)", marginTop: 8, fontSize: 14, maxWidth: 380 }}>
+          We capture three angles — front, left, and right — for an in-depth structural analysis. Good, even lighting helps. Everything stays on your device.
         </p>
       </div>
 
@@ -29,7 +29,7 @@ export default function ScanPage() {
 
       {/* Feature chips */}
       <div style={{ display: "flex", gap: 8, marginTop: 32, flexWrap: "wrap", justifyContent: "center" }}>
-        {["TinyFaceDetector", "68 Landmarks", "Client-side only", "No data uploaded"].map(f => (
+        {["3-Angle Capture", "68 Landmarks", "Client-side only", "No data uploaded"].map(f => (
           <span key={f} style={{
             padding: "4px 12px", borderRadius: 20, fontSize: 11,
             border: "1px solid rgba(6,182,212,0.2)",

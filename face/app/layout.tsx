@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { TelemetryProvider } from "@/lib/context/TelemetryContext";
 import { ScanProvider } from "@/lib/context/ScanContext";
+import HomeButton from "@/components/ui/HomeButton";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ background: "var(--bg-obsidian)", minHeight: "100vh" }}>
         <TelemetryProvider>
           <ScanProvider>
+            <HomeButton />
             {children}
           </ScanProvider>
         </TelemetryProvider>

@@ -29,6 +29,22 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Instant tactile feedback on every button — fixes the "laggy / unresponsive"
+   feel by giving an immediate visual response on press, independent of React
+   state updates or route transitions. */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;        /* removes the 300ms mobile tap delay */
+  transition: transform 0.08s ease, filter 0.08s ease, background 0.15s ease;
+}
+button:not(:disabled):active {
+  transform: scale(0.96);
+  filter: brightness(1.08);
+}
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 /* Glass card base */
 .glass-card {
   background: var(--bg-card);

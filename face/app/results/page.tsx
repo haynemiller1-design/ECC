@@ -118,6 +118,19 @@ export default function ResultsPage() {
                 />
               )}
             </div>
+            {/* Multi-angle capture set from the in-depth scan */}
+            {scan.captures.length > 1 && (
+              <div style={{ display: "flex", gap: 8, padding: 16, justifyContent: "center" }}>
+                {scan.captures.map(c => (
+                  <div key={c.angle} style={{ textAlign: "center" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.imageDataUrl} alt={`${c.angle} view`}
+                      style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", transform: "scaleX(-1)" }} />
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, textTransform: "capitalize" }}>{c.angle}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </GlassCard>
         )}
 

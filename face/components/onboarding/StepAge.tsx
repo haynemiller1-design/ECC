@@ -1,8 +1,25 @@
 "use client";
+import { useState } from "react";
 import { useTelemetry } from "@/lib/context/TelemetryContext";
 
 export default function StepAge() {
   const { state, dispatch } = useTelemetry();
+
+  // Local string state so the field can be freely typed and cleared.
+  // Only valid numbers are committed to the telemetry context.
+  const [raw, setRaw] = useState<string>(state.age != null ? String(state.age) : "");
+
+  function handleChange(value: string) {
+    // Allow only digits, max 3 chars — lets the user clear and retype freely.
+    const digits = value.replace(/[^0-9]/g, "").slice(0, 3);
+    setRaw(digits);
+    const n = parseInt(digits, 10);
+    if (Number.isFinite(n) && n >= 13 && n <= 120) {
+      dispatch({ type: "SET_AGE", payload: n });
+    } else {
+      dispatch({ type: "SET_AGE", payload: null });
+    }
+  }
 
   return (
     <div className="fade-in-up">
@@ -11,12 +28,13 @@ export default function StepAge() {
       </label>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <input
-          type="number"
-          min={13}
-          max={120}
-          value={state.age ?? ""}
-          onChange={(e) => { const v = parseInt(e.target.value); if (Number.isFinite(v) && v >= 13 && v <= 120) dispatch({ type: "SET_AGE", payload: v }); }}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={raw}
+          onChange={(e) => handleChange(e.target.value)}
           placeholder="e.g. 24"
+          autoFocus
           style={{
             flex: 1, padding: "16px 20px", borderRadius: 12,
             background: "rgba(255,255,255,0.05)",
@@ -31,24 +49,11 @@ export default function StepAge() {
         <span style={{ fontSize: 16, color: "var(--text-muted)" }}>yrs</span>
       </div>
 
-      {/* Quick-pick buttons */}
-      <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
-        {[18, 22, 25, 30, 35, 40, 50].map((age) => (
-          <button
-            key={age}
-            onClick={() => dispatch({ type: "SET_AGE", payload: age })}
-            style={{
-              padding: "8px 16px", borderRadius: 8,
-              border: `1px solid ${state.age === age ? "var(--accent-violet)" : "rgba(255,255,255,0.08)"}`,
-              background: state.age === age ? "rgba(139,92,246,0.2)" : "transparent",
-              color: state.age === age ? "var(--accent-violet)" : "var(--text-muted)",
-              cursor: "pointer", fontSize: 13,
-            }}
-          >
-            {age}
-          </button>
-        ))}
-      </div>
+      {raw !== "" && (parseInt(raw, 10) < 13 || parseInt(raw, 10) > 120) && (
+        <p style={{ marginTop: 12, fontSize: 12, color: "var(--accent-rose)" }}>
+          Please enter an age between 13 and 120.
+        </p>
+      )}
 
       <p style={{ marginTop: 20, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
         Age calibrates facial volume expectations and structural norms. Scoring scales differ across developmental stages.

@@ -18,7 +18,7 @@ export interface TelemetryState {
 }
 
 type Action =
-  | { type: "SET_AGE"; payload: number }
+  | { type: "SET_AGE"; payload: number | null }
   | { type: "SET_SEX"; payload: BiologicalSex }
   | { type: "SET_HEIGHT"; payload: number }
   | { type: "SET_WEIGHT"; payload: number }
@@ -51,6 +51,7 @@ const VALID_UNIT = new Set<string>(["metric", "imperial"]);
 function reducer(state: TelemetryState, action: Action): TelemetryState {
   switch (action.type) {
     case "SET_AGE": {
+      if (action.payload === null) return { ...state, age: null };
       const age = clamp(action.payload, 13, 120);
       return age !== null ? { ...state, age } : state;
     }
