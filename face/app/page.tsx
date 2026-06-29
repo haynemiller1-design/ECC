@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import ScoreRing from "@/components/results/ScoreRing";
 
 const FEATURES = [
@@ -36,8 +36,6 @@ const STEPS = [
 ];
 
 export default function LandingPage() {
-  const router = useRouter();
-
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-obsidian)", color: "var(--text-primary)", overflowX: "hidden" }}>
 
@@ -54,16 +52,16 @@ export default function LandingPage() {
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-cyan)", boxShadow: "0 0 10px var(--accent-cyan)" }} />
           <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: "0.04em" }}>VisageIQ</span>
         </div>
-        <button
-          onClick={() => router.push("/onboarding")}
+        <Link
+          href="/onboarding"
           style={{
             padding: "8px 20px", borderRadius: 8, border: "1px solid rgba(139,92,246,0.3)", cursor: "pointer",
             background: "rgba(139,92,246,0.15)", color: "var(--accent-violet)",
-            fontSize: 13, fontWeight: 600,
+            fontSize: 13, fontWeight: 600, textDecoration: "none", display: "inline-block",
           } as React.CSSProperties}
         >
           Get Started
-        </button>
+        </Link>
       </nav>
 
       {/* Hero */}
@@ -104,20 +102,21 @@ export default function LandingPage() {
         </p>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-          <button
-            onClick={() => router.push("/onboarding")}
+          <Link
+            href="/onboarding"
             style={{
               padding: "16px 36px", borderRadius: 12, border: "none", cursor: "pointer",
               background: "linear-gradient(135deg, var(--accent-violet), var(--accent-cyan))",
               color: "white", fontSize: 16, fontWeight: 700,
               boxShadow: "0 8px 32px rgba(139,92,246,0.4)",
               transition: "transform 0.15s, box-shadow 0.15s",
+              textDecoration: "none", display: "inline-block",
             }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 12px 40px rgba(139,92,246,0.5)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(139,92,246,0.4)"; }}
           >
             Analyze My Face →
-          </button>
+          </Link>
           <a
             href="#how-it-works"
             style={{
@@ -264,20 +263,21 @@ export default function LandingPage() {
         <p style={{ fontSize: 16, color: "var(--text-muted)", marginBottom: 36 }}>
           Free. No account. Under 2 minutes.
         </p>
-        <button
-          onClick={() => router.push("/onboarding")}
+        <Link
+          href="/onboarding"
           style={{
             padding: "18px 48px", borderRadius: 12, border: "none", cursor: "pointer",
             background: "linear-gradient(135deg, var(--accent-violet), var(--accent-cyan))",
             color: "white", fontSize: 17, fontWeight: 700,
             boxShadow: "0 8px 40px rgba(139,92,246,0.4)",
             transition: "transform 0.15s, box-shadow 0.15s",
+            textDecoration: "none", display: "inline-block",
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 12px 48px rgba(139,92,246,0.55)"; }}
           onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 40px rgba(139,92,246,0.4)"; }}
         >
           Analyze My Face →
-        </button>
+        </Link>
       </section>
 
       {/* Footer */}

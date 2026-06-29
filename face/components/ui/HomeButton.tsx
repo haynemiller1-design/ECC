@@ -1,20 +1,21 @@
 "use client";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 /**
  * Persistent "Home" button fixed to the top-left of every screen.
  * Lets the user return to the landing page from any point in the flow.
  * Hidden on the landing page itself (pathname "/") to avoid redundancy.
+ * Rendered as a real link so it works even before React hydrates.
  */
 export default function HomeButton() {
   const pathname = usePathname();
-  const router = useRouter();
 
   if (pathname === "/") return null;
 
   return (
-    <button
-      onClick={() => router.push("/")}
+    <Link
+      href="/"
       aria-label="Back to home"
       style={{
         position: "fixed",
@@ -35,10 +36,11 @@ export default function HomeButton() {
         fontWeight: 600,
         letterSpacing: "0.02em",
         boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
+        textDecoration: "none",
       }}
     >
       <span style={{ fontSize: 15, lineHeight: 1 }}>⌂</span>
       <span>Home</span>
-    </button>
+    </Link>
   );
 }
