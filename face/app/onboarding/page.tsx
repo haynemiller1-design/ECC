@@ -8,16 +8,16 @@ import StepMeasurements from "@/components/onboarding/StepMeasurements";
 import StepSkinType from "@/components/onboarding/StepSkinType";
 
 const STEPS = [
-  { title: "How old are you?", subtitle: "Age calibrates structural volume norms and scoring baselines." },
-  { title: "Biological profile", subtitle: "Facial geometry is highly sex-dimorphic — this sets your reference model." },
-  { title: "Body measurements", subtitle: "Contextualizes facial proportions within physical build." },
-  { title: "Skin phenotype", subtitle: "Enables clinical-grade dermatological recommendations." },
+  { title: "How old are you?", subtitle: "Scores are calibrated to your age — facial proportions change over time." },
+  { title: "What's your sex?", subtitle: "Male and female faces have different ideal proportions. This sets the right reference." },
+  { title: "Height & weight", subtitle: "Helps put your facial proportions in context with your overall build." },
+  { title: "What's your skin like?", subtitle: "Unlocks a personalized skincare routine matched to your skin type and age." },
 ];
 
 const STEP_COMPONENTS = [<StepAge key="age" />, <StepSex key="sex" />, <StepMeasurements key="meas" />, <StepSkinType key="skin" />];
 
 function isStepValid(step: number, state: ReturnType<typeof useTelemetry>["state"]): boolean {
-  if (step === 0) return state.age !== null && state.age >= 13 && state.age <= 99;
+  if (step === 0) return state.age !== null && state.age >= 13 && state.age <= 120;
   if (step === 1) return state.sex !== null;
   if (step === 2) return state.heightCm !== null && state.weightKg !== null && state.heightCm > 0 && state.weightKg > 0;
   if (step === 3) return state.skinType !== null;

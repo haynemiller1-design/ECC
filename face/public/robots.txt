@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /results
+Disallow: /dashboard
+Disallow: /recommendations
+Disallow: /scan
+
+Sitemap: /sitemap.xml

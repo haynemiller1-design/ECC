@@ -1,5 +1,7 @@
 "use client";
-import { createContext, useContext, useReducer, ReactNode } from "react";
+import { createContext, useContext, useReducer, useEffect, ReactNode } from "react";
+
+const SESSION_KEY = "visageiq_telemetry";
 
 export type BiologicalSex = "male" | "female" | null;
 export type SkinType = "oily" | "dry" | "combination" | "sensitive" | null;
@@ -87,8 +89,23 @@ const TelemetryContext = createContext<{
   dispatch: React.Dispatch<Action>;
 } | null>(null);
 
+function loadFromSession(): TelemetryState {
+  if (typeof window === "undefined") return initial;
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return initial;
+    const parsed = JSON.parse(raw) as Partial<TelemetryState>;
+    return { ...initial, ...parsed };
+  } catch { return initial; }
+}
+
 export function TelemetryProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initial);
+  const [state, dispatch] = useReducer(reducer, undefined, loadFromSession);
+
+  useEffect(() => {
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch { /* storage full or blocked */ }
+  }, [state]);
+
   return (
     <TelemetryContext.Provider value={{ state, dispatch }}>
       {children}

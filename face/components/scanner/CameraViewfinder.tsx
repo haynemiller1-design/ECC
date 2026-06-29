@@ -78,11 +78,28 @@ export default function CameraViewfinder() {
 
     // Detect landmarks on captured frame
     const result = await detectLandmarks(video);
-    if (result) {
-      const pts = result.landmarks.positions.map(p => ({ x: p.x, y: p.y }));
-      setLandmarks(pts);
-      dispatch({ type: "SET_LANDMARKS", payload: pts });
+    if (!result) {
+      setError("No face detected. Make sure your face is well-lit and centered, then try again.");
+      setPhase("error");
+      // Restart stream so they can try again without refreshing
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => setPhase("streaming");
+        }
+      } catch { /* camera may have been closed; error phase shows retry message */ }
+      return;
     }
+
+    const pts = result.landmarks.positions.map(p => ({ x: p.x, y: p.y }));
+    setLandmarks(pts);
+    dispatch({ type: "SET_LANDMARKS", payload: pts });
 
     // Stop stream
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -95,7 +112,7 @@ export default function CameraViewfinder() {
       {/* Dimorphism toggle */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", maxWidth: dimensions.w }}>
         <div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Dimorphism Matrix</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Reference Model</div>
         </div>
         <DimorphismToggle />
       </div>
@@ -175,11 +192,15 @@ export default function CameraViewfinder() {
 
       {/* Status text */}
       <div style={{ textAlign: "center" }}>
-        {phase === "loading" && <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Initializing biometric engine…</p>}
-        {phase === "streaming" && <p style={{ color: "var(--text-subtle)", fontSize: 14 }}>Center your face in the frame. Ensure even lighting.</p>}
-        {phase === "scanning" && <p style={{ color: "var(--accent-cyan)", fontSize: 14 }}>Scanning landmark mesh…</p>}
-        {phase === "done" && <p style={{ color: "var(--accent-green)", fontSize: 14 }}>Scan complete — computing metrics…</p>}
-        {phase === "error" && <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Grant camera permission and refresh.</p>}
+        {phase === "loading" && <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Initializing face detection engine…</p>}
+        {phase === "streaming" && <p style={{ color: "var(--text-subtle)", fontSize: 14 }}>Center your face and ensure even lighting, then tap the button.</p>}
+        {phase === "scanning" && <p style={{ color: "var(--accent-cyan)", fontSize: 14 }}>Detecting facial landmarks…</p>}
+        {phase === "done" && <p style={{ color: "var(--accent-green)", fontSize: 14 }}>Scan complete — computing your scores…</p>}
+        {phase === "error" && (
+          <p style={{ color: "var(--text-muted)", fontSize: 13, maxWidth: 320, margin: "0 auto", lineHeight: 1.5 }}>
+            {error || "Camera unavailable. Grant permission and try again."}
+          </p>
+        )}
       </div>
 
       {/* Capture button */}
