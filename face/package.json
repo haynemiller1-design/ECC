@@ -7,6 +7,7 @@
     "dev:phone": "next dev --experimental-https -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
+    "start:phone": "next build && node scripts/https-prod-server.js",
     "lint": "eslint",
     "models": "node scripts/download-models.js"
   },
