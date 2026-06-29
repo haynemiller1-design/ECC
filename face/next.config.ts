@@ -29,7 +29,6 @@ const securityHeaders = [
       "geolocation=()",
       "payment=()",
       "usb=()",
-      "bluetooth=()",
       "accelerometer=()",
       "gyroscope=()",
       "magnetometer=()",
@@ -50,7 +49,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval'",          // unsafe-eval required by TF.js/face-api WebGL
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // unsafe-eval: TF.js/face-api WebGL; unsafe-inline: Next.js hydration bootstrap scripts
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob:",               // data: for canvas capture, blob: for object URLs
