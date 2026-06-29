@@ -175,14 +175,14 @@ export default function ResultsPage() {
             </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
               {[
-                { label: "Alignment", val: scan.teeth.alignment },
-                { label: "Symmetry", val: scan.teeth.symmetry },
-                { label: "Whiteness", val: scan.teeth.whiteness },
-                { label: "Proportion", val: scan.teeth.proportion },
+                { label: "Alignment", val: scan.teeth.alignment, show: true },
+                { label: "Symmetry", val: scan.teeth.symmetry, show: true },
+                { label: "Whiteness", val: scan.teeth.whiteness, show: scan.teeth.whitenessConfident },
+                { label: "Proportion", val: scan.teeth.proportion, show: true },
               ].map((d) => (
                 <div key={d.label} style={{ flex: "1 1 60px", textAlign: "center", minWidth: 60 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: d.val >= 8 ? "var(--accent-green)" : d.val >= 6 ? "var(--accent-cyan)" : "var(--accent-violet)" }}>
-                    {d.val.toFixed(1)}
+                  <div style={{ fontSize: 18, fontWeight: 700, color: !d.show ? "var(--text-muted)" : d.val >= 8 ? "var(--accent-green)" : d.val >= 6 ? "var(--accent-cyan)" : "var(--accent-violet)" }}>
+                    {d.show ? d.val.toFixed(1) : "—"}
                   </div>
                   <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>{d.label}</div>
                 </div>

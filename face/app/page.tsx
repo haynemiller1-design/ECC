@@ -132,6 +132,10 @@ export default function LandingPage() {
           </a>
         </div>
 
+        <Link href="/rate" style={{ marginTop: 18, fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}>
+          or <span style={{ color: "var(--accent-cyan)", borderBottom: "1px solid rgba(6,182,212,0.4)" }}>rate someone from a photo →</span>
+        </Link>
+
         {/* Score preview */}
         <div style={{
           marginTop: 64, display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap", justifyContent: "center",

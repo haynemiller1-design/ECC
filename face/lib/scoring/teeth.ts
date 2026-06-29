@@ -9,6 +9,7 @@ export interface TeethMetrics {
   whiteness: number;   // 0-10 — rough shade/brightness of the tooth region
   proportion: number;  // 0-10 — mouth/smile width vs facial proportion
   aggregate: number;   // 0-10 weighted overall
+  whitenessConfident: boolean; // false when teeth weren't bright/visible enough to judge
   note: string;
 }
 
@@ -27,9 +28,9 @@ function devScore(deviation: number, tolerance: number): number {
  * @param brightness   mean luminance (0-255) sampled from the inner-mouth region
  * @param faceWidth    bizygomatic-ish face width in the same pixel space
  */
-export function computeTeethMetrics(lm: LandmarkPoint[], brightness: number, faceWidth: number): TeethMetrics {
+export function computeTeethMetrics(lm: LandmarkPoint[], teethBrightness: number, faceWidth: number): TeethMetrics {
   if (!lm || lm.length < 68 || faceWidth <= 0) {
-    return { alignment: 0, symmetry: 0, whiteness: 0, proportion: 0, aggregate: 0, note: "No smile capture available." };
+    return { alignment: 0, symmetry: 0, whiteness: 0, proportion: 0, aggregate: 0, whitenessConfident: false, note: "No smile capture available." };
   }
 
   // ── Alignment: how level the inner upper-lip / tooth line is. ──
@@ -47,20 +48,30 @@ export function computeTeethMetrics(lm: LandmarkPoint[], brightness: number, fac
   const distDev = Math.abs(Math.abs(leftCorner.x - midX) - Math.abs(rightCorner.x - midX)) / Math.max(1, mouthW);
   const symmetry = devScore((cornerYDev + distDev) / 2, 0.16);
 
-  // ── Whiteness: brightness 150→255 maps to 0→10 (teeth are the bright region). ──
-  const whiteness = Math.round(Math.min(10, Math.max(0, (brightness - 150) / (255 - 150) * 10)) * 10) / 10;
+  // ── Whiteness: from the brightest (tooth) pixels, baseline ~110 (dim teeth)
+  // to ~235 (bright white). Below ~70 the teeth weren't really visible/lit, so
+  // we don't trust the reading and exclude it from the aggregate. ──
+  const whitenessConfident = teethBrightness >= 70;
+  const whiteness = whitenessConfident
+    ? Math.round(Math.min(10, Math.max(0, (teethBrightness - 110) / (235 - 110) * 10)) * 10) / 10
+    : 0;
 
   // ── Proportion: smile width vs face width. Aesthetic ideal ≈ 0.50. ──
   const widthRatio = mouthW / faceWidth;
   const proportion = devScore(Math.abs(widthRatio - 0.50), 0.22);
 
-  const aggregate = Math.round((alignment * 0.3 + symmetry * 0.3 + whiteness * 0.2 + proportion * 0.2) * 10) / 10;
+  // Weight whiteness in only when we trust it; otherwise reweight the rest.
+  const aggregate = whitenessConfident
+    ? Math.round((alignment * 0.3 + symmetry * 0.3 + whiteness * 0.2 + proportion * 0.2) * 10) / 10
+    : Math.round((alignment * 0.4 + symmetry * 0.35 + proportion * 0.25) * 10) / 10;
 
-  const note = aggregate >= 8
-    ? "Even, balanced smile with good proportion."
-    : aggregate >= 6
-      ? "Generally balanced; minor asymmetry or shade variation."
-      : "Notable asymmetry, shade, or proportion variance detected.";
+  const note = !whitenessConfident
+    ? "Couldn't read tooth shade reliably (teeth not clearly visible or lit) — whiteness excluded."
+    : aggregate >= 8
+      ? "Even, balanced smile with good proportion."
+      : aggregate >= 6
+        ? "Generally balanced; minor asymmetry or shade variation."
+        : "Notable asymmetry, shade, or proportion variance detected.";
 
-  return { alignment, symmetry, whiteness, proportion, aggregate, note };
+  return { alignment, symmetry, whiteness, proportion, aggregate, whitenessConfident, note };
 }

@@ -24,6 +24,7 @@ export interface TeethMetrics {
   whiteness: number;
   proportion: number;
   aggregate: number;
+  whitenessConfident: boolean;
   note: string;
 }
 

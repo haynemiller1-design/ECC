@@ -43,24 +43,53 @@ export async function detectLandmarksLive(
   return result ?? null;
 }
 
-// Mean luminance (0-255) of a rectangular region of a canvas — used to estimate
-// tooth shade/brightness from the inner-mouth area of the smile capture.
-export function sampleRegionBrightness(
+export interface RegionStats {
+  mean: number;     // mean luma 0-255
+  bright: number;   // mean of the brightest ~25% of pixels (≈ the teeth)
+  count: number;    // pixels sampled
+}
+
+// Luma statistics of a rectangular region of a canvas. `bright` isolates the
+// lightest pixels (the teeth) rather than averaging in lips/shadows/gums.
+export function sampleRegionStats(
   canvas: HTMLCanvasElement,
   x: number, y: number, w: number, h: number
-): number {
+): RegionStats {
   const ix = Math.max(0, Math.floor(x)), iy = Math.max(0, Math.floor(y));
   const iw = Math.max(1, Math.min(canvas.width - ix, Math.floor(w)));
   const ih = Math.max(1, Math.min(canvas.height - iy, Math.floor(h)));
   const ctx = canvas.getContext("2d");
-  if (!ctx) return 0;
+  if (!ctx) return { mean: 0, bright: 0, count: 0 };
   let data: Uint8ClampedArray;
-  try { data = ctx.getImageData(ix, iy, iw, ih).data; } catch { return 0; }
-  let sum = 0, n = 0;
+  try { data = ctx.getImageData(ix, iy, iw, ih).data; } catch { return { mean: 0, bright: 0, count: 0 }; }
+  const lumas: number[] = [];
+  let sum = 0;
   for (let i = 0; i < data.length; i += 4) {
-    // Rec. 601 luma
-    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-    n++;
+    const l = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    lumas.push(l); sum += l;
   }
-  return n ? sum / n : 0;
+  const n = lumas.length || 1;
+  lumas.sort((a, b) => a - b);
+  const topStart = Math.floor(lumas.length * 0.75);
+  let bsum = 0, bn = 0;
+  for (let i = topStart; i < lumas.length; i++) { bsum += lumas[i]; bn++; }
+  return { mean: sum / n, bright: bn ? bsum / bn : sum / n, count: n };
+}
+
+// Mean luma (0-255) of a downscaled video frame — a cheap lighting probe for the
+// live loop. Reuses one small offscreen canvas.
+let probeCanvas: HTMLCanvasElement | null = null;
+export function sampleVideoBrightness(video: HTMLVideoElement, w = 64, h = 48): number {
+  if (typeof document === "undefined") return 0;
+  if (!probeCanvas) probeCanvas = document.createElement("canvas");
+  probeCanvas.width = w; probeCanvas.height = h;
+  const ctx = probeCanvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return 0;
+  try {
+    ctx.drawImage(video, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4) sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    return sum / (data.length / 4);
+  } catch { return 0; }
 }

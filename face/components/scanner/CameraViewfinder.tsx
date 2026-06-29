@@ -3,9 +3,10 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useScan, CaptureAngle } from "@/lib/context/ScanContext";
 import {
-  loadFaceApiModels, detectLandmarks, detectLandmarksLive, sampleRegionBrightness,
+  loadFaceApiModels, detectLandmarks, detectLandmarksLive, sampleRegionStats, sampleVideoBrightness,
 } from "@/lib/faceApi/loader";
 import { computeFaceMetrics, checkTarget, ScanTarget } from "@/lib/faceApi/pose";
+import { assessLighting } from "@/lib/faceApi/quality";
 import { computeTeethMetrics } from "@/lib/scoring/teeth";
 import { LandmarkPoint } from "@/lib/scoring/goldenRatio";
 import MeasurementLines from "./MeasurementLines";
@@ -86,6 +87,10 @@ export default function CameraViewfinder() {
     const resume = () => { runningRef.current = true; setPhase("scanning"); loopRef.current(); };
     if (!imageDataUrl.startsWith("data:image/") || imageDataUrl.length > 5_000_000) { resume(); return; }
 
+    // Reject a poorly-lit capture (also guards the manual fallback button).
+    const lighting = assessLighting(sampleRegionStats(canvas, 0, 0, w, h).mean);
+    if (!lighting.ok) { setHint(lighting.reason); resume(); return; }
+
     const result = await detectLandmarks(canvas);
     const pts: LandmarkPoint[] | null = result
       ? result.landmarks.positions.map(p => ({ x: p.x, y: p.y }))
@@ -95,14 +100,14 @@ export default function CameraViewfinder() {
 
     dispatch({ type: "ADD_CAPTURE", payload: { angle: target as CaptureAngle, imageDataUrl, landmarks: pts, w, h } });
 
-    // Teeth analysis on the smile capture.
+    // Teeth analysis on the smile capture — use the brightest (tooth) pixels.
     if (target === "smile" && pts && pts.length >= 68) {
       const m = [60, 61, 62, 63, 64, 65, 66, 67].map(i => pts[i]);
       const minX = Math.min(...m.map(p => p.x)), maxX = Math.max(...m.map(p => p.x));
       const minY = Math.min(...m.map(p => p.y)), maxY = Math.max(...m.map(p => p.y));
-      const brightness = sampleRegionBrightness(canvas, minX, minY, maxX - minX, maxY - minY);
+      const stats = sampleRegionStats(canvas, minX, minY, maxX - minX, maxY - minY);
       const faceWidth = Math.hypot(pts[15].x - pts[1].x, pts[15].y - pts[1].y);
-      dispatch({ type: "SET_TEETH", payload: computeTeethMetrics(pts, brightness, faceWidth) });
+      dispatch({ type: "SET_TEETH", payload: computeTeethMetrics(pts, stats.bright, faceWidth) });
     }
 
     const next = targetIdxRef.current + 1;
@@ -126,6 +131,15 @@ export default function CameraViewfinder() {
     const video = videoRef.current;
     if (!video || busyRef.current) { setTimeout(() => loopRef.current(), LOOP_MS); return; }
     busyRef.current = true;
+    // Lighting gate — a too-dark / blown-out frame must not be used for analysis.
+    const lighting = assessLighting(sampleVideoBrightness(video));
+    if (!lighting.ok) {
+      setHint(lighting.reason);
+      stableRef.current = 0;
+      busyRef.current = false;
+      if (runningRef.current) setTimeout(() => loopRef.current(), LOOP_MS);
+      return;
+    }
     detectLandmarksLive(video).then((res) => {
       const pts = res ? res.landmarks.positions.map(p => ({ x: p.x, y: p.y })) : null;
       setLive(pts);
