@@ -6,6 +6,7 @@ import { useTelemetry } from "@/lib/context/TelemetryContext";
 import { computeGoldenRatioScore, GoldenRatioScore } from "@/lib/scoring/goldenRatio";
 import { computeSymmetry, HemifaceDelta } from "@/lib/scoring/symmetry";
 import { computeBoneMetrics, BoneMetrics } from "@/lib/scoring/boneMetrics";
+import { computeFacialMetrics, FacialMetrics } from "@/lib/scoring/facialMetrics";
 import GlassCard from "@/components/ui/GlassCard";
 import ScoreRing from "@/components/results/ScoreRing";
 import RatioBreakdown from "@/components/results/RatioBreakdown";
@@ -22,26 +23,35 @@ export default function ResultsPage() {
   const [grScore, setGrScore] = useState<GoldenRatioScore | null>(null);
   const [symScore, setSymScore] = useState<HemifaceDelta | null>(null);
   const [boneScore, setBoneScore] = useState<BoneMetrics | null>(null);
+  const [harmony, setHarmony] = useState<FacialMetrics | null>(null);
 
   useEffect(() => {
     if (!hydrated) return; // wait for sessionStorage restore before deciding to redirect
     if (!scan.landmarks) { router.replace("/scan"); return; }
     // Simulate metric processing delay for UX
     const t = setTimeout(() => {
-      const gr = computeGoldenRatioScore(scan.landmarks!);
-      const sym = computeSymmetry(scan.landmarks!);
-      const bone = computeBoneMetrics(scan.landmarks!, scan.dimorphismMode);
-      setGrScore(gr);
-      setSymScore(sym);
-      setBoneScore(bone);
+      setGrScore(computeGoldenRatioScore(scan.landmarks!));
+      setSymScore(computeSymmetry(scan.landmarks!));
+      setBoneScore(computeBoneMetrics(scan.landmarks!, scan.dimorphismMode));
+      setHarmony(computeFacialMetrics(scan.landmarks!));
       setLoading(false);
     }, 1200);
     return () => clearTimeout(t);
   }, [hydrated, scan.landmarks, scan.dimorphismMode, router]);
 
-  const aggregate = grScore && symScore && boneScore
-    ? Math.round((grScore.aggregate * 0.4 + symScore.symmetryScore * 0.3 + boneScore.aggregateBoneScore * 0.3) * 10) / 10
-    : 0;
+  // Overall score blends every available measure (teeth folded in when present).
+  const aggregate = (() => {
+    if (!grScore || !symScore || !boneScore || !harmony) return 0;
+    const parts: [number, number][] = [
+      [grScore.aggregate, 0.25],
+      [harmony.aggregate, 0.20],
+      [symScore.symmetryScore, 0.20],
+      [boneScore.aggregateBoneScore, 0.20],
+    ];
+    if (scan.teeth) parts.push([scan.teeth.aggregate, 0.15]);
+    const wSum = parts.reduce((s, [, w]) => s + w, 0);
+    return Math.round(parts.reduce((s, [v, w]) => s + v * w, 0) / wSum * 10) / 10;
+  })();
 
   return (
     <div style={{
@@ -85,6 +95,7 @@ export default function ResultsPage() {
                   <NeonBadge label={`φ ${grScore!.aggregate.toFixed(1)}`} color="violet" />
                   <NeonBadge label={`⊕ ${symScore!.symmetryScore.toFixed(1)}`} color="cyan" />
                   <NeonBadge label={`◻ ${boneScore!.aggregateBoneScore.toFixed(1)}`} color="green" />
+                  {harmony && <NeonBadge label={`✶ ${harmony.aggregate.toFixed(1)}`} color="violet" />}
                 </div>
                 <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7 }}>
                   {boneScore?.dimorphismNote}
@@ -144,25 +155,57 @@ export default function ResultsPage() {
           {loading ? <SkeletonLoader count={4} height={40} /> : <RatioBreakdown ratios={grScore!.ratios} />}
         </GlassCard>
 
-        {/* Symmetry */}
+        {/* Symmetry — rated out of 10 per feature */}
         <GlassCard style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Facial Symmetry</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Facial Symmetry</h2>
+            {!loading && <NeonBadge label={`⊕ ${symScore!.symmetryScore.toFixed(1)}`} color="cyan" />}
+          </div>
           {loading ? <SkeletonLoader count={2} height={40} /> : (
             <>
-              <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
-                {symScore!.deltaMap.slice(0, 5).map((d) => (
-                  <div key={d.feature} style={{ flex: 1, textAlign: "center" }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: d.percentDiff < 5 ? "var(--accent-green)" : d.percentDiff < 15 ? "var(--accent-cyan)" : "var(--accent-violet)" }}>
-                      {d.percentDiff.toFixed(1)}%
+              <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+                {symScore!.deltaMap.slice(0, 5).map((d) => {
+                  const s = Math.round(Math.max(0, Math.min(10, (1 - d.percentDiff / 30) * 10)) * 10) / 10;
+                  return (
+                    <div key={d.feature} style={{ flex: "1 1 60px", textAlign: "center", minWidth: 56 }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: s >= 8 ? "var(--accent-green)" : s >= 6 ? "var(--accent-cyan)" : "var(--accent-violet)" }}>
+                        {s.toFixed(1)}
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>{d.feature}</div>
                     </div>
-                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>{d.feature}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                Left-hemiface vs right-hemiface delta tracking. Lower % = higher bilateral symmetry.
+                Left vs right balance, rated out of 10 per feature. Higher = more symmetric.
               </p>
             </>
+          )}
+        </GlassCard>
+
+        {/* Facial Harmony — additional aesthetic measures */}
+        <GlassCard style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Facial Harmony</h2>
+            {!loading && harmony && <NeonBadge label={`✶ ${harmony.aggregate.toFixed(1)}`} color="violet" />}
+          </div>
+          {loading || !harmony ? <SkeletonLoader count={3} height={36} /> : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {harmony.items.map((it) => (
+                <div key={it.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{it.name}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{it.detail}</div>
+                  </div>
+                  <div style={{ width: 84, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${it.score * 10}%`, background: it.score >= 8 ? "var(--accent-green)" : it.score >= 6 ? "var(--accent-cyan)" : "var(--accent-violet)" }} />
+                  </div>
+                  <div style={{ width: 30, textAlign: "right", fontSize: 14, fontWeight: 700, color: it.score >= 8 ? "var(--accent-green)" : it.score >= 6 ? "var(--accent-cyan)" : "var(--accent-violet)" }}>
+                    {it.score.toFixed(1)}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </GlassCard>
 

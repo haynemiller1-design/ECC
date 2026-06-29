@@ -3,7 +3,6 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useScan } from "@/lib/context/ScanContext";
 import { loadFaceApiModels, detectLandmarks, sampleRegionStats } from "@/lib/faceApi/loader";
-import { assessLighting } from "@/lib/faceApi/quality";
 import { computeFaceMetrics } from "@/lib/faceApi/pose";
 import { computeTeethMetrics } from "@/lib/scoring/teeth";
 import GlassCard from "@/components/ui/GlassCard";
@@ -67,14 +66,14 @@ export default function RatePhotoPage() {
 
       // Teeth only when a smile actually shows teeth.
       const m = computeFaceMetrics(pts, w, h);
-      const lit = assessLighting(sampleRegionStats(canvas, 0, 0, w, h).mean);
-      if (lit.ok && m.mouthOpenRatio > 0.1 && m.smileCurve > 0.03) {
+      const faceStats = sampleRegionStats(canvas, 0, 0, w, h);
+      if (m.mouthOpenRatio > 0.1 && m.smileCurve > 0.03) {
         const mouth = [60, 61, 62, 63, 64, 65, 66, 67].map(i => pts[i]);
         const minX = Math.min(...mouth.map(p => p.x)), maxX = Math.max(...mouth.map(p => p.x));
         const minY = Math.min(...mouth.map(p => p.y)), maxY = Math.max(...mouth.map(p => p.y));
         const stats = sampleRegionStats(canvas, minX, minY, maxX - minX, maxY - minY);
         const faceWidth = Math.hypot(pts[15].x - pts[1].x, pts[15].y - pts[1].y);
-        dispatch({ type: "SET_TEETH", payload: computeTeethMetrics(pts, stats.bright, faceWidth) });
+        dispatch({ type: "SET_TEETH", payload: computeTeethMetrics(pts, stats.bright, faceStats.mean, faceWidth) });
       }
 
       router.push("/results");
