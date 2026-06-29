@@ -2,12 +2,14 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useScan, CaptureAngle, TeethMetrics } from "@/lib/context/ScanContext";
+import { useTelemetry } from "@/lib/context/TelemetryContext";
 import {
-  loadFaceApiModels, detectLandmarks, detectLandmarksLive, sampleRegionStats, sampleVideoBrightness,
+  loadFaceApiModels, detectLandmarks, detectLandmarksLive, sampleRegionStats, sampleVideoBrightness, sampleSkinRegions,
 } from "@/lib/faceApi/loader";
 import { computeFaceMetrics, checkTarget, POSE } from "@/lib/faceApi/pose";
 import { assessLighting } from "@/lib/faceApi/quality";
 import { computeTeethMetrics } from "@/lib/scoring/teeth";
+import { analyzeSkin, SkinAnalysis } from "@/lib/scoring/skinAnalysis";
 import { LandmarkPoint } from "@/lib/scoring/goldenRatio";
 import MeasurementLines from "./MeasurementLines";
 import ScanLaser from "./ScanLaser";
@@ -21,6 +23,7 @@ interface Pending {
   landmarks: LandmarkPoint[] | null;
   w: number; h: number;
   teeth?: TeethMetrics;
+  skin?: SkinAnalysis;
 }
 
 const TARGETS: { id: TargetId; title: string; emoji: string; required: number }[] = [
@@ -46,6 +49,7 @@ export default function CameraViewfinder() {
   const captureRef = useRef<(t: TargetId) => void>(() => {});
 
   const { dispatch } = useScan();
+  const { state: tele } = useTelemetry();
   const router = useRouter();
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -118,6 +122,12 @@ export default function CameraViewfinder() {
 
     const next: Pending = { angle, imageDataUrl, landmarks: pts, w, h };
 
+    // Skin/acne analysis from the front view (whole face, neutral).
+    if (id === "front" && pts && pts.length >= 68) {
+      const regions = sampleSkinRegions(canvas, pts);
+      next.skin = analyzeSkin(regions, tele.age ?? 25, tele.sex);
+    }
+
     if (id === "smile" && pts && pts.length >= 68) {
       const mouth = [60, 61, 62, 63, 64, 65, 66, 67].map(i => pts[i]);
       const minX = Math.min(...mouth.map(p => p.x)), maxX = Math.max(...mouth.map(p => p.x));
@@ -131,7 +141,7 @@ export default function CameraViewfinder() {
     setPending(next);
     setProgress(0);
     setPhase("review");
-  }, [dimensions, live]);
+  }, [dimensions, live, tele.age, tele.sex]);
 
   const loop = useCallback(() => {
     if (!runningRef.current) return;
@@ -191,6 +201,7 @@ export default function CameraViewfinder() {
     if (!pending) return;
     dispatch({ type: "ADD_CAPTURE", payload: { angle: pending.angle, imageDataUrl: pending.imageDataUrl, landmarks: pending.landmarks, w: pending.w, h: pending.h } });
     if (pending.teeth) dispatch({ type: "SET_TEETH", payload: pending.teeth });
+    if (pending.skin) dispatch({ type: "SET_SKIN", payload: pending.skin });
     setPending(null);
     const next = targetIdxRef.current + 1;
     if (next < TARGETS.length) {

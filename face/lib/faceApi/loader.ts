@@ -76,6 +76,70 @@ export function sampleRegionStats(
   return { mean: sum / n, bright: bn ? bsum / bn : sum / n, count: n };
 }
 
+import type { LandmarkPoint } from "@/lib/scoring/goldenRatio";
+import type { RegionSignal, NamedRegion } from "@/lib/scoring/skinAnalysis";
+
+// Extract skin signals (redness, lesion/spot density, dark marks, oil shine)
+// from a rectangular skin patch of the captured photo.
+export function sampleSkinSignal(canvas: HTMLCanvasElement, x: number, y: number, w: number, h: number): RegionSignal {
+  const empty: RegionSignal = { redness: 0, spotDensity: 0, darkSpots: 0, shine: 0 };
+  const ix = Math.max(0, Math.floor(x)), iy = Math.max(0, Math.floor(y));
+  const iw = Math.floor(Math.min(canvas.width - ix, w)), ih = Math.floor(Math.min(canvas.height - iy, h));
+  if (iw < 6 || ih < 6) return empty;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return empty;
+  let data: Uint8ClampedArray;
+  try { data = ctx.getImageData(ix, iy, iw, ih).data; } catch { return empty; }
+
+  const n = data.length / 4;
+  const lumas = new Float32Array(n), reds = new Float32Array(n);
+  let rSum = 0, shine = 0;
+  for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+    const R = data[i], G = data[i + 1], B = data[i + 2];
+    const luma = 0.299 * R + 0.587 * G + 0.114 * B;
+    const redness = R - (G + B) / 2;
+    lumas[j] = luma; reds[j] = redness; rSum += Math.max(0, redness);
+    if (luma > 235) shine++;
+  }
+  const sortedL = Float32Array.from(lumas).sort();
+  const sortedR = Float32Array.from(reds).sort();
+  const medL = sortedL[Math.floor(n / 2)], medR = sortedR[Math.floor(n / 2)];
+
+  let spot = 0, dark = 0;
+  for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+    const R = data[i], G = data[i + 1], B = data[i + 2];
+    const inflamed = reds[j] > medR + 16 && reds[j] > 8;
+    const bump = lumas[j] < medL - 26 && lumas[j] < 235;
+    if (inflamed || bump) spot++;
+    if (lumas[j] < medL - 18 && R > G && G >= B && reds[j] < medR + 14) dark++;
+  }
+  return {
+    redness: Math.max(0, Math.min(1, (rSum / n) / 40)),
+    spotDensity: spot / n,
+    darkSpots: dark / n,
+    shine: shine / n,
+  };
+}
+
+// Build the named skin regions (forehead, cheeks, nose, chin) from landmarks and
+// sample each — ready to hand to analyzeSkin().
+export function sampleSkinRegions(canvas: HTMLCanvasElement, p: LandmarkPoint[]): NamedRegion[] {
+  if (!p || p.length < 68) return [];
+  const browTop = Math.min(p[19].y, p[24].y);
+  const faceH = Math.max(40, p[8].y - browTop);
+  const out: NamedRegion[] = [];
+  const add = (name: string, x1: number, y1: number, x2: number, y2: number) => {
+    const x = Math.min(x1, x2), y = Math.min(y1, y2), w = Math.abs(x2 - x1), hh = Math.abs(y2 - y1);
+    if (w >= 6 && hh >= 6) out.push({ name, signal: sampleSkinSignal(canvas, x, y, w, hh) });
+  };
+  add("forehead", p[19].x, browTop - faceH * 0.34, p[24].x, browTop - faceH * 0.06);
+  add("left cheek", p[2].x, p[41].y + 4, p[31].x - 4, p[48].y);
+  add("right cheek", p[35].x + 4, p[46].y + 4, p[14].x, p[54].y);
+  add("nose", p[31].x, p[28].y, p[35].x, p[33].y);
+  add("chin", p[48].x, p[57].y + 6, p[54].x, p[8].y);
+  return out;
+}
+
 // Mean luma (0-255) of a downscaled video frame — a cheap lighting probe for the
 // live loop. Reuses one small offscreen canvas.
 let probeCanvas: HTMLCanvasElement | null = null;

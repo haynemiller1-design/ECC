@@ -2,9 +2,10 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useScan } from "@/lib/context/ScanContext";
-import { loadFaceApiModels, detectLandmarks, sampleRegionStats } from "@/lib/faceApi/loader";
+import { loadFaceApiModels, detectLandmarks, sampleRegionStats, sampleSkinRegions } from "@/lib/faceApi/loader";
 import { computeFaceMetrics } from "@/lib/faceApi/pose";
 import { computeTeethMetrics } from "@/lib/scoring/teeth";
+import { analyzeSkin } from "@/lib/scoring/skinAnalysis";
 import GlassCard from "@/components/ui/GlassCard";
 
 type Phase = "intro" | "analyzing" | "error";
@@ -65,6 +66,9 @@ export default function RatePhotoPage() {
       dispatch({ type: "ADD_CAPTURE", payload: { angle: "front", imageDataUrl, landmarks: pts, w, h } });
 
       // Teeth only when a smile actually shows teeth.
+      // Skin / acne analysis from the photo.
+      dispatch({ type: "SET_SKIN", payload: analyzeSkin(sampleSkinRegions(canvas, pts), 25, sex) });
+
       const m = computeFaceMetrics(pts, w, h);
       const faceStats = sampleRegionStats(canvas, 0, 0, w, h);
       if (m.mouthOpenRatio > 0.1 && m.smileCurve > 0.03) {

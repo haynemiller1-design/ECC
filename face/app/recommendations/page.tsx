@@ -2,8 +2,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTelemetry } from "@/lib/context/TelemetryContext";
+import { useScan } from "@/lib/context/ScanContext";
 import { getClinicalRecommendations, getBoneRecommendations, ClinicalEntry, BoneRecommendation, ConcernType, BoneTarget } from "@/lib/clinical/database";
 import GlassCard from "@/components/ui/GlassCard";
+import AcneAnalysis from "@/components/recommendations/AcneAnalysis";
 import IngredientCard from "@/components/recommendations/IngredientCard";
 import RoutineMatrix from "@/components/recommendations/RoutineMatrix";
 import NeonBadge from "@/components/ui/NeonBadge";
@@ -27,6 +29,7 @@ function inferBoneTargets(/* future: pass bone score */): BoneTarget[] {
 
 export default function RecommendationsPage() {
   const { state: tele } = useTelemetry();
+  const { state: scan } = useScan();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [skinRecs, setSkinRecs] = useState<ClinicalEntry[]>([]);
@@ -107,6 +110,7 @@ export default function RecommendationsPage() {
         </div>
       ) : activeTab === "skin" ? (
         <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {scan.skin && <AcneAnalysis skin={scan.skin} />}
           {skinRecs.length === 0 ? (
             <GlassCard>
               <p style={{ color: "var(--text-muted)", textAlign: "center", fontSize: 14 }}>

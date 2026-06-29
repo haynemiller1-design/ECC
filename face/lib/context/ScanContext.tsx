@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useReducer, useEffect, useState, ReactNode } from "react";
+import type { SkinAnalysis } from "@/lib/scoring/skinAnalysis";
 
 const SESSION_KEY = "visageiq_scan";
 
@@ -39,6 +40,7 @@ export interface ScanResult {
   // Full multi-angle capture set (front / left / right / smile).
   captures: AngleCapture[];
   teeth: TeethMetrics | null;
+  skin: SkinAnalysis | null;
 }
 
 type Action =
@@ -46,6 +48,7 @@ type Action =
   | { type: "SET_LANDMARKS"; payload: Landmark[] }
   | { type: "ADD_CAPTURE"; payload: AngleCapture }
   | { type: "SET_TEETH"; payload: TeethMetrics }
+  | { type: "SET_SKIN"; payload: SkinAnalysis }
   | { type: "SET_DIMORPHISM"; payload: "male" | "female" }
   | { type: "HYDRATE"; payload: ScanResult }
   | { type: "RESET" };
@@ -59,6 +62,7 @@ const initial: ScanResult = {
   dimorphismMode: "male",
   captures: [],
   teeth: null,
+  skin: null,
 };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
@@ -84,6 +88,7 @@ function reducer(state: ScanResult, action: Action): ScanResult {
       return { ...state, captures };
     }
     case "SET_TEETH": return { ...state, teeth: action.payload };
+    case "SET_SKIN": return { ...state, skin: action.payload };
     case "SET_DIMORPHISM": return { ...state, dimorphismMode: action.payload };
     case "HYDRATE": return { ...initial, ...action.payload };
     case "RESET": return { ...initial };
