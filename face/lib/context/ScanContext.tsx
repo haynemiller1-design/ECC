@@ -8,28 +8,43 @@ export interface Landmark {
   y: number;
 }
 
-export type CaptureAngle = "front" | "left" | "right";
+export type CaptureAngle = "front" | "left" | "right" | "smile";
 
 export interface AngleCapture {
   angle: CaptureAngle;
   imageDataUrl: string;
   landmarks: Landmark[] | null;
+  w: number; // pixel space the landmarks live in (capture canvas size)
+  h: number;
+}
+
+export interface TeethMetrics {
+  alignment: number;
+  symmetry: number;
+  whiteness: number;
+  proportion: number;
+  aggregate: number;
+  note: string;
 }
 
 export interface ScanResult {
   // Primary front-facing capture — drives all scoring on the results page.
   landmarks: Landmark[] | null;
   imageDataUrl: string | null;
+  frameW: number | null; // pixel space of the front landmarks (for overlay scaling)
+  frameH: number | null;
   capturedAt: number | null;
   dimorphismMode: "male" | "female";
-  // Full multi-angle capture set (front / left / right) for the in-depth scan.
+  // Full multi-angle capture set (front / left / right / smile).
   captures: AngleCapture[];
+  teeth: TeethMetrics | null;
 }
 
 type Action =
   | { type: "SET_IMAGE"; payload: string }
   | { type: "SET_LANDMARKS"; payload: Landmark[] }
   | { type: "ADD_CAPTURE"; payload: AngleCapture }
+  | { type: "SET_TEETH"; payload: TeethMetrics }
   | { type: "SET_DIMORPHISM"; payload: "male" | "female" }
   | { type: "HYDRATE"; payload: ScanResult }
   | { type: "RESET" };
@@ -37,9 +52,12 @@ type Action =
 const initial: ScanResult = {
   landmarks: null,
   imageDataUrl: null,
+  frameW: null,
+  frameH: null,
   capturedAt: null,
   dimorphismMode: "male",
   captures: [],
+  teeth: null,
 };
 
 function reducer(state: ScanResult, action: Action): ScanResult {
@@ -57,11 +75,14 @@ function reducer(state: ScanResult, action: Action): ScanResult {
           captures,
           imageDataUrl: action.payload.imageDataUrl,
           landmarks: action.payload.landmarks,
+          frameW: action.payload.w,
+          frameH: action.payload.h,
           capturedAt: Date.now(),
         };
       }
       return { ...state, captures };
     }
+    case "SET_TEETH": return { ...state, teeth: action.payload };
     case "SET_DIMORPHISM": return { ...state, dimorphismMode: action.payload };
     case "HYDRATE": return { ...initial, ...action.payload };
     case "RESET": return { ...initial };
@@ -94,6 +115,9 @@ export function ScanProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
+    // Never persist an empty scan — prevents a fresh mount from clobbering a
+    // previously stored scan before it has had a chance to load.
+    if (!state.landmarks && state.captures.length === 0 && !state.teeth) return;
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(state)); }
     catch { /* quota exceeded (large captures) or storage blocked — non-fatal */ }
   }, [state, hydrated]);

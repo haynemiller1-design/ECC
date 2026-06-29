@@ -2,288 +2,290 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useScan, CaptureAngle } from "@/lib/context/ScanContext";
-import { loadFaceApiModels, detectLandmarks } from "@/lib/faceApi/loader";
+import {
+  loadFaceApiModels, detectLandmarks, detectLandmarksLive, sampleRegionBrightness,
+} from "@/lib/faceApi/loader";
+import { computeFaceMetrics, checkTarget, ScanTarget } from "@/lib/faceApi/pose";
+import { computeTeethMetrics } from "@/lib/scoring/teeth";
 import { LandmarkPoint } from "@/lib/scoring/goldenRatio";
+import MeasurementLines from "./MeasurementLines";
 import ScanLaser from "./ScanLaser";
-import LandmarkOverlay from "./LandmarkOverlay";
-import DimorphismToggle from "./DimorphismToggle";
 
-type Phase = "loading" | "streaming" | "capturing" | "analyzing" | "done" | "error";
+type Phase = "loading" | "scanning" | "captured" | "analyzing" | "done" | "error";
 
-// The guided multi-angle sequence. Front drives scoring; the profiles make the
-// scan a genuine multi-view capture instead of a single selfie.
-const ANGLES: { angle: CaptureAngle; title: string; instruction: string; emoji: string }[] = [
-  { angle: "front", title: "Front View",        instruction: "Look straight into the camera, face centered and evenly lit.", emoji: "😐" },
-  { angle: "left",  title: "Left Profile",      instruction: "Slowly turn your head to show your LEFT side to the camera.",   emoji: "😶‍🌫️" },
-  { angle: "right", title: "Right Profile",     instruction: "Now turn your head to show your RIGHT side to the camera.",     emoji: "🫥" },
+const TARGETS: { id: ScanTarget; title: string; emoji: string }[] = [
+  { id: "front", title: "Front", emoji: "😐" },
+  { id: "left",  title: "Left",  emoji: "👈" },
+  { id: "right", title: "Right", emoji: "👉" },
+  { id: "smile", title: "Smile", emoji: "😁" },
 ];
+
+const STABLE_FRAMES = 5;     // consecutive good frames before auto-capture
+const LOOP_MS = 140;         // detection cadence
+const FALLBACK_MS = 14000;   // show a manual capture button if stuck this long
 
 export default function CameraViewfinder() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const { state: scan, dispatch } = useScan();
+  const runningRef = useRef(false);
+  const busyRef = useRef(false);
+  const stableRef = useRef(0);
+  const targetIdxRef = useRef(0);
+  // Refs to the latest loop/capture, so the two can call each other without a
+  // declaration cycle (which React's hooks lint forbids).
+  const loopRef = useRef<() => void>(() => {});
+  const captureRef = useRef<(t: ScanTarget) => void>(() => {});
+
+  const { dispatch } = useScan();
   const router = useRouter();
 
   const [phase, setPhase] = useState<Phase>("loading");
-  const [angleIndex, setAngleIndex] = useState(0);
-  const [landmarks, setLandmarks] = useState<LandmarkPoint[]>([]);
+  const [targetIdx, setTargetIdx] = useState(0);
   const [dimensions, setDimensions] = useState({ w: 480, h: 360 });
-  const [error, setError] = useState<string>("");
-  const [analyzeMsg, setAnalyzeMsg] = useState("Reconstructing 3D facial model…");
+  const [live, setLive] = useState<LandmarkPoint[] | null>(null);
+  const [hint, setHint] = useState("Position your face in the frame");
+  const [error, setError] = useState("");
+  const [showManual, setShowManual] = useState(false);
+  const [analyzeMsg, setAnalyzeMsg] = useState("");
 
-  const current = ANGLES[angleIndex];
-  const captured = scan.captures.map(c => c.angle);
+  const current = TARGETS[targetIdx];
+  const captured = TARGETS.slice(0, targetIdx).map(t => t.id);
 
-  // Start (or restart) the camera stream.
-  const startStream = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
-    });
-    streamRef.current = stream;
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.onloadedmetadata = () => {
-        const v = videoRef.current!;
-        setDimensions({ w: v.videoWidth || 480, h: v.videoHeight || 360 });
-        setPhase("streaming");
-      };
-    }
-  }, []);
-
-  // Load models then start camera.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        await loadFaceApiModels();
-        if (cancelled) return;
-        await startStream();
-        if (cancelled) streamRef.current?.getTracks().forEach(t => t.stop());
-      } catch (e) {
-        if (!cancelled) { setError(e instanceof Error ? e.message : "Camera access denied."); setPhase("error"); }
-      }
-    })();
-    return () => { cancelled = true; streamRef.current?.getTracks().forEach(t => t.stop()); };
-  }, [startStream]);
-
-  // Run the in-depth analysis animation, then route to results.
   const runDeepAnalysis = useCallback(() => {
     setPhase("analyzing");
     const steps = [
       "Reconstructing 3D facial model…",
       "Aligning front and profile geometry…",
       "Mapping bone structure across views…",
+      "Analyzing smile & dental proportion…",
       "Computing symmetry & golden-ratio metrics…",
-      "Finalizing biometric report…",
     ];
-    let i = 0;
-    setAnalyzeMsg(steps[0]);
+    let i = 0; setAnalyzeMsg(steps[0]);
     const iv = setInterval(() => {
       i += 1;
       if (i < steps.length) setAnalyzeMsg(steps[i]);
-      else {
-        clearInterval(iv);
-        setPhase("done");
-        setTimeout(() => router.push("/results"), 1200);
-      }
-    }, 900);
+      else { clearInterval(iv); setPhase("done"); setTimeout(() => router.push("/results"), 1100); }
+    }, 850);
   }, [router]);
 
-  const handleCapture = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    setPhase("capturing");
+  // ── Capture the current frame, run a clean detection, store it ──
+  const capture = useCallback(async (target: ScanTarget) => {
+    runningRef.current = false;
+    const video = videoRef.current, canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    setPhase("captured");
 
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d")!;
-    canvas.width = dimensions.w;
-    canvas.height = dimensions.h;
-    ctx.drawImage(video, 0, 0, dimensions.w, dimensions.h);
-
+    const w = dimensions.w, h = dimensions.h;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, w, h);
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    if (!imageDataUrl.startsWith("data:image/")) { setPhase("streaming"); return; }
-    if (imageDataUrl.length > 4_000_000) {
-      setError("Captured image too large. Try again.");
-      setPhase("error");
-      return;
-    }
 
-    const result = await detectLandmarks(video);
+    const resume = () => { runningRef.current = true; setPhase("scanning"); loopRef.current(); };
+    if (!imageDataUrl.startsWith("data:image/") || imageDataUrl.length > 5_000_000) { resume(); return; }
+
+    const result = await detectLandmarks(canvas);
     const pts: LandmarkPoint[] | null = result
       ? result.landmarks.positions.map(p => ({ x: p.x, y: p.y }))
-      : null;
+      : (target === "front" ? null : live); // profiles tolerate the live estimate
 
-    // The front view must contain a detectable face — it powers all scoring.
-    if (current.angle === "front" && !pts) {
-      setError("No face detected on the front view. Make sure your face is well-lit and centered, then try again.");
-      setPhase("error");
-      streamRef.current?.getTracks().forEach(t => t.stop());
-      try { await startStream(); } catch { /* camera may have closed */ }
-      return;
+    if (target === "front" && !pts) { resume(); return; } // front must drive scoring
+
+    dispatch({ type: "ADD_CAPTURE", payload: { angle: target as CaptureAngle, imageDataUrl, landmarks: pts, w, h } });
+
+    // Teeth analysis on the smile capture.
+    if (target === "smile" && pts && pts.length >= 68) {
+      const m = [60, 61, 62, 63, 64, 65, 66, 67].map(i => pts[i]);
+      const minX = Math.min(...m.map(p => p.x)), maxX = Math.max(...m.map(p => p.x));
+      const minY = Math.min(...m.map(p => p.y)), maxY = Math.max(...m.map(p => p.y));
+      const brightness = sampleRegionBrightness(canvas, minX, minY, maxX - minX, maxY - minY);
+      const faceWidth = Math.hypot(pts[15].x - pts[1].x, pts[15].y - pts[1].y);
+      dispatch({ type: "SET_TEETH", payload: computeTeethMetrics(pts, brightness, faceWidth) });
     }
 
-    if (pts) { setLandmarks(pts); }
-    dispatch({ type: "ADD_CAPTURE", payload: { angle: current.angle, imageDataUrl, landmarks: pts } });
-
-    // Advance to the next angle, or run the deep analysis if all are captured.
-    if (angleIndex < ANGLES.length - 1) {
-      setAngleIndex(angleIndex + 1);
-      setPhase("streaming");
+    const next = targetIdxRef.current + 1;
+    if (next < TARGETS.length) {
+      targetIdxRef.current = next;
+      setTargetIdx(next);
+      stableRef.current = 0;
+      setShowManual(false);
+      runningRef.current = true;
+      setPhase("scanning");
+      loopRef.current();
     } else {
       streamRef.current?.getTracks().forEach(t => t.stop());
       runDeepAnalysis();
     }
-  }, [dimensions, dispatch, current, angleIndex, startStream, runDeepAnalysis]);
+  }, [dimensions, dispatch, live, runDeepAnalysis]);
 
-  function retry() {
-    setError("");
-    setPhase("streaming");
-  }
+  // ── The live detection loop ──
+  const loop = useCallback(() => {
+    if (!runningRef.current) return;
+    const video = videoRef.current;
+    if (!video || busyRef.current) { setTimeout(() => loopRef.current(), LOOP_MS); return; }
+    busyRef.current = true;
+    detectLandmarksLive(video).then((res) => {
+      const pts = res ? res.landmarks.positions.map(p => ({ x: p.x, y: p.y })) : null;
+      setLive(pts);
+      const target = TARGETS[targetIdxRef.current].id;
+      const m = computeFaceMetrics(pts, dimensions.w, dimensions.h);
+      const check = checkTarget(target, m, true);
+      setHint(check.hint);
+      if (check.satisfied) {
+        stableRef.current += 1;
+        if (stableRef.current >= STABLE_FRAMES) { busyRef.current = false; captureRef.current(target); return; }
+      } else {
+        stableRef.current = 0;
+      }
+    }).catch(() => { /* transient detection error — keep looping */ })
+      .finally(() => { busyRef.current = false; if (runningRef.current) setTimeout(() => loopRef.current(), LOOP_MS); });
+  }, [dimensions]);
+
+  // Keep the refs pointing at the latest closures.
+  useEffect(() => { loopRef.current = loop; captureRef.current = capture; }, [loop, capture]);
+
+  const start = useCallback(async () => {
+    try {
+      await loadFaceApiModels();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+      });
+      streamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        setDimensions({ w: video.videoWidth || 480, h: video.videoHeight || 360 });
+        setPhase("scanning");
+        runningRef.current = true;
+        loopRef.current();
+      };
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Camera access denied.");
+      setPhase("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    // Mount-time camera/model init; state updates happen asynchronously after.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    start();
+    return () => {
+      runningRef.current = false;
+      streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, [start]);
+
+  // Manual-capture fallback if a target takes too long. (showManual is reset to
+  // false on every target advance / retry, so we only need to arm the timer.)
+  useEffect(() => {
+    if (phase !== "scanning") return;
+    const t = setTimeout(() => setShowManual(true), FALLBACK_MS);
+    return () => clearTimeout(t);
+  }, [phase, targetIdx]);
+
+  function retry() { setError(""); setShowManual(false); stableRef.current = 0; setPhase("loading"); start(); }
+
+  const showBox = phase === "scanning" || phase === "captured";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-      {/* Header row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", maxWidth: dimensions.w }}>
-        <div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Reference Model</div>
-        </div>
-        <DimorphismToggle />
-      </div>
-
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: "100%" }}>
       {/* Angle progress chips */}
       <div style={{ display: "flex", gap: 8, width: "100%", maxWidth: dimensions.w }}>
-        {ANGLES.map((a, i) => {
-          const done = captured.includes(a.angle);
-          const active = i === angleIndex && phase !== "analyzing" && phase !== "done";
+        {TARGETS.map((t, i) => {
+          const done = captured.includes(t.id);
+          const active = i === targetIdx && (phase === "scanning" || phase === "captured");
           return (
-            <div key={a.angle} style={{
-              flex: 1, padding: "8px 6px", borderRadius: 10, textAlign: "center",
+            <div key={t.id} style={{
+              flex: 1, padding: "8px 4px", borderRadius: 10, textAlign: "center",
               border: `1px solid ${done ? "var(--accent-green)" : active ? "var(--accent-cyan)" : "rgba(255,255,255,0.08)"}`,
               background: done ? "rgba(16,185,129,0.12)" : active ? "rgba(6,182,212,0.1)" : "transparent",
               transition: "all 0.25s",
             }}>
-              <div style={{ fontSize: 14 }}>{done ? "✓" : a.emoji}</div>
-              <div style={{
-                fontSize: 10, marginTop: 2, letterSpacing: "0.04em",
-                color: done ? "var(--accent-green)" : active ? "var(--accent-cyan)" : "var(--text-muted)",
-              }}>{a.title}</div>
+              <div style={{ fontSize: 14 }}>{done ? "✓" : t.emoji}</div>
+              <div style={{ fontSize: 10, marginTop: 2, color: done ? "var(--accent-green)" : active ? "var(--accent-cyan)" : "var(--text-muted)" }}>{t.title}</div>
             </div>
           );
         })}
       </div>
 
       {/* Viewfinder */}
-      <div
-        style={{
-          position: "relative",
-          width: dimensions.w, maxWidth: "100%",
-          aspectRatio: `${dimensions.w} / ${dimensions.h}`,
-          borderRadius: 16, overflow: "hidden",
-          border: phase === "capturing" || phase === "analyzing" ? "2px solid var(--accent-cyan)" : "2px solid rgba(255,255,255,0.1)",
-          boxShadow: phase === "capturing" || phase === "analyzing" ? "0 0 40px rgba(6,182,212,0.3)" : "none",
-          transition: "box-shadow 0.3s, border-color 0.3s",
-          background: "#000",
-        }}
-      >
+      <div style={{
+        position: "relative", width: dimensions.w, maxWidth: "100%",
+        aspectRatio: `${dimensions.w} / ${dimensions.h}`,
+        borderRadius: 16, overflow: "hidden", background: "#000",
+        border: phase === "captured" ? "2px solid var(--accent-green)" : "2px solid rgba(6,182,212,0.4)",
+        boxShadow: phase === "scanning" ? "0 0 32px rgba(6,182,212,0.25)" : "none",
+        transition: "border-color 0.3s, box-shadow 0.3s",
+      }}>
         {phase === "loading" && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-            <div className="skeleton" style={{ width: 60, height: 60, borderRadius: "50%" }} />
-            <span style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading models…</span>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+            <div className="skeleton" style={{ width: 56, height: 56, borderRadius: "50%" }} />
+            <span style={{ color: "var(--text-muted)", fontSize: 13 }}>Starting camera…</span>
           </div>
         )}
 
         {phase === "error" && (
           <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 24 }}>
-            <span style={{ fontSize: 32 }}>⚠</span>
-            <p style={{ color: "var(--accent-rose, #F43F5E)", textAlign: "center", fontSize: 14 }}>{error || "Camera unavailable"}</p>
-            <button onClick={retry} style={{
-              marginTop: 8, padding: "10px 20px", borderRadius: 10,
-              border: "1px solid var(--accent-cyan)", background: "rgba(6,182,212,0.1)",
-              color: "var(--accent-cyan)", fontSize: 13, fontWeight: 600,
-            }}>Try again</button>
+            <span style={{ fontSize: 30 }}>⚠</span>
+            <p style={{ color: "var(--accent-rose)", textAlign: "center", fontSize: 13 }}>{error || "Camera unavailable"}</p>
+            <button onClick={retry} style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid var(--accent-cyan)", background: "rgba(6,182,212,0.1)", color: "var(--accent-cyan)", fontSize: 13, fontWeight: 600 }}>Try again</button>
           </div>
         )}
 
-        {/* Analyzing overlay */}
         {phase === "analyzing" && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 24, background: "rgba(11,15,25,0.85)", zIndex: 5 }}>
-            <div className="skeleton" style={{ width: 64, height: 64, borderRadius: "50%" }} />
-            <p style={{ color: "var(--accent-cyan)", fontSize: 14, textAlign: "center", letterSpacing: "0.03em" }}>{analyzeMsg}</p>
-            <div style={{ display: "flex", gap: 6 }}>
-              {scan.captures.map(c => (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img key={c.angle} src={c.imageDataUrl} alt={c.angle}
-                  style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(6,182,212,0.4)", transform: "scaleX(-1)" }} />
-              ))}
-            </div>
+          <div style={{ position: "absolute", inset: 0, zIndex: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24, background: "rgba(11,15,25,0.86)" }}>
+            <div className="skeleton" style={{ width: 60, height: 60, borderRadius: "50%" }} />
+            <p style={{ color: "var(--accent-cyan)", fontSize: 13, textAlign: "center" }}>{analyzeMsg}</p>
           </div>
         )}
 
         <video
           ref={videoRef}
           autoPlay playsInline muted
-          style={{
-            width: "100%", height: "100%", objectFit: "cover",
-            display: phase === "streaming" || phase === "capturing" ? "block" : "none",
-            transform: "scaleX(-1)",
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: showBox ? "block" : "none", transform: "scaleX(-1)" }}
         />
 
-        {phase === "done" && landmarks.length > 0 && (
-          <LandmarkOverlay landmarks={landmarks} width={dimensions.w} height={dimensions.h} />
+        {/* Live measurement lines (mirrored to match the selfie preview) */}
+        {phase === "scanning" && live && (
+          <MeasurementLines landmarks={live} srcWidth={dimensions.w} srcHeight={dimensions.h} mirrored />
         )}
 
-        <ScanLaser active={phase === "capturing"} />
+        <ScanLaser active={phase === "scanning"} />
 
-        {(phase === "streaming" || phase === "capturing") && (
-          <>
-            {[["top:12px","left:12px"],["top:12px","right:12px"],["bottom:12px","left:12px"],["bottom:12px","right:12px"]].map((corners, i) => {
-              const s: Record<string, string> = { position: "absolute", width: "24px", height: "24px", borderColor: "var(--accent-cyan)", border: "2px solid", borderRadius: "2px", opacity: "0.7" };
-              corners.forEach(c => { const [k, v] = c.split(":"); s[k] = v; });
-              return <div key={i} style={s as React.CSSProperties} />;
-            })}
-          </>
-        )}
-
-        {phase === "done" && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(16,185,129,0.12)", zIndex: 6 }}>
-            <div style={{ fontSize: 48, color: "var(--accent-green)" }}>✓</div>
+        {phase === "captured" && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(16,185,129,0.14)", zIndex: 7 }}>
+            <div style={{ fontSize: 44, color: "var(--accent-green)" }}>✓</div>
           </div>
         )}
       </div>
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      {/* Status text */}
-      <div style={{ textAlign: "center", minHeight: 44 }}>
-        {phase === "loading" && <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Initializing face detection engine…</p>}
-        {phase === "streaming" && (
+      {/* Guidance */}
+      <div style={{ textAlign: "center", minHeight: 48 }}>
+        {phase === "loading" && <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading face engine…</p>}
+        {phase === "scanning" && (
           <>
-            <p style={{ color: "var(--accent-cyan)", fontSize: 15, fontWeight: 600 }}>{current.emoji} {current.title} — {angleIndex + 1} of {ANGLES.length}</p>
-            <p style={{ color: "var(--text-subtle)", fontSize: 13, marginTop: 4, maxWidth: 340 }}>{current.instruction}</p>
+            <p style={{ color: "var(--accent-cyan)", fontSize: 15, fontWeight: 600 }}>{current.emoji} {current.title} view</p>
+            <p style={{ color: "var(--text-subtle)", fontSize: 14, marginTop: 4, maxWidth: 320 }}>{hint}</p>
           </>
         )}
-        {phase === "capturing" && <p style={{ color: "var(--accent-cyan)", fontSize: 14 }}>Capturing {current.title.toLowerCase()}…</p>}
-        {phase === "analyzing" && <p style={{ color: "var(--text-subtle)", fontSize: 13 }}>Deep multi-view analysis in progress…</p>}
+        {phase === "captured" && <p style={{ color: "var(--accent-green)", fontSize: 14 }}>{current.title} captured ✓</p>}
+        {phase === "analyzing" && <p style={{ color: "var(--text-subtle)", fontSize: 13 }}>Deep multi-view analysis…</p>}
         {phase === "done" && <p style={{ color: "var(--accent-green)", fontSize: 14 }}>Scan complete — opening your report…</p>}
       </div>
 
-      {/* Capture button */}
-      {phase === "streaming" && (
+      {/* Manual fallback if auto-capture struggles */}
+      {phase === "scanning" && showManual && (
         <button
-          onClick={handleCapture}
-          aria-label={`Capture ${current.title}`}
-          style={{
-            width: 72, height: 72, borderRadius: "50%",
-            border: "3px solid var(--accent-cyan)",
-            background: "rgba(6,182,212,0.1)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 20px rgba(6,182,212,0.3)",
-          }}
+          onClick={() => { if (runningRef.current) captureRef.current(current.id); }}
+          style={{ padding: "12px 24px", borderRadius: 999, border: "1px solid rgba(6,182,212,0.5)", background: "rgba(6,182,212,0.12)", color: "var(--accent-cyan)", fontSize: 14, fontWeight: 600 }}
         >
-          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--accent-cyan)" }} />
+          Capture {current.title} now
         </button>
       )}
     </div>

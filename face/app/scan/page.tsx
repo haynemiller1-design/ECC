@@ -1,7 +1,18 @@
 "use client";
+import { useEffect } from "react";
 import CameraViewfinder from "@/components/scanner/CameraViewfinder";
+import { useTelemetry } from "@/lib/context/TelemetryContext";
+import { useScan } from "@/lib/context/ScanContext";
 
 export default function ScanPage() {
+  const { state: tele } = useTelemetry();
+  const { dispatch } = useScan();
+
+  // Reference model follows the sex chosen during onboarding (no manual toggle).
+  useEffect(() => {
+    dispatch({ type: "SET_DIMORPHISM", payload: tele.sex === "female" ? "female" : "male" });
+  }, [tele.sex, dispatch]);
+
   return (
     <div style={{
       minHeight: "100dvh", width: "100%", maxWidth: "100%", overflowX: "hidden",
@@ -11,7 +22,7 @@ export default function ScanPage() {
       boxSizing: "border-box",
     }}>
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
         <p style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8 }}>
           VisageIQ · Step 2 of 2
         </p>
@@ -20,18 +31,19 @@ export default function ScanPage() {
           background: "linear-gradient(135deg, #06B6D4, #10B981)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
         }}>
-          Full Face Scan
+          Live Face Scan
         </h1>
-        <p style={{ color: "var(--text-muted)", marginTop: 8, fontSize: 14, maxWidth: 380 }}>
-          We capture three angles — front, left, and right — for an in-depth structural analysis. Good, even lighting helps. Everything stays on your device.
+        <p style={{ color: "var(--text-muted)", marginTop: 8, fontSize: 14, maxWidth: 400 }}>
+          Just follow the prompts — the camera reads your face live and captures each view on its own.
+          No buttons, nothing leaves your device.
         </p>
       </div>
 
       <CameraViewfinder />
 
       {/* Feature chips */}
-      <div style={{ display: "flex", gap: 8, marginTop: 32, flexWrap: "wrap", justifyContent: "center" }}>
-        {["3-Angle Capture", "68 Landmarks", "Client-side only", "No data uploaded"].map(f => (
+      <div style={{ display: "flex", gap: 8, marginTop: 28, flexWrap: "wrap", justifyContent: "center" }}>
+        {["Live auto-capture", "Front · sides · smile", "68 Landmarks", "On-device only"].map(f => (
           <span key={f} style={{
             padding: "4px 12px", borderRadius: 20, fontSize: 11,
             border: "1px solid rgba(6,182,212,0.2)",

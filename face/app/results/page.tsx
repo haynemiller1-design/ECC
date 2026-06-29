@@ -11,7 +11,7 @@ import ScoreRing from "@/components/results/ScoreRing";
 import RatioBreakdown from "@/components/results/RatioBreakdown";
 import SkeletonLoader from "@/components/ui/SkeletonLoader";
 import NeonBadge from "@/components/ui/NeonBadge";
-import LandmarkOverlay from "@/components/scanner/LandmarkOverlay";
+import MeasurementLines from "@/components/scanner/MeasurementLines";
 
 export default function ResultsPage() {
   const { state: scan, hydrated } = useScan();
@@ -108,25 +108,25 @@ export default function ResultsPage() {
             src is validated to be a data:image/ URI set by our own canvas capture — never user input. */}
         {scan.imageDataUrl && scan.imageDataUrl.startsWith("data:image/") && !loading && (
           <GlassCard style={{ marginBottom: 24, padding: 0, overflow: "hidden" }}>
-            <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
+            <div style={{ position: "relative", display: "block", width: "100%", lineHeight: 0 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={scan.imageDataUrl} alt="Captured face" style={{ width: "100%", display: "block", borderRadius: 16 }} />
-              {scan.landmarks && (
-                <LandmarkOverlay
+              {scan.landmarks && scan.frameW && scan.frameH && (
+                <MeasurementLines
                   landmarks={scan.landmarks}
-                  width={640}
-                  height={480}
+                  srcWidth={scan.frameW}
+                  srcHeight={scan.frameH}
                 />
               )}
             </div>
             {/* Multi-angle capture set from the in-depth scan */}
             {scan.captures.length > 1 && (
-              <div style={{ display: "flex", gap: 8, padding: 16, justifyContent: "center" }}>
+              <div style={{ display: "flex", gap: 8, padding: 16, justifyContent: "center", flexWrap: "wrap" }}>
                 {scan.captures.map(c => (
                   <div key={c.angle} style={{ textAlign: "center" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={c.imageDataUrl} alt={`${c.angle} view`}
-                      style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", transform: "scaleX(-1)" }} />
+                      style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)" }} />
                     <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, textTransform: "capitalize" }}>{c.angle}</div>
                   </div>
                 ))}
@@ -165,6 +165,34 @@ export default function ResultsPage() {
             </>
           )}
         </GlassCard>
+
+        {/* Smile / teeth */}
+        {!loading && scan.teeth && (
+          <GlassCard style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 600 }}>Smile & Teeth</h2>
+              <NeonBadge label={`☺ ${scan.teeth.aggregate.toFixed(1)}`} color="green" />
+            </div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+              {[
+                { label: "Alignment", val: scan.teeth.alignment },
+                { label: "Symmetry", val: scan.teeth.symmetry },
+                { label: "Whiteness", val: scan.teeth.whiteness },
+                { label: "Proportion", val: scan.teeth.proportion },
+              ].map((d) => (
+                <div key={d.label} style={{ flex: "1 1 60px", textAlign: "center", minWidth: 60 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: d.val >= 8 ? "var(--accent-green)" : d.val >= 6 ? "var(--accent-cyan)" : "var(--accent-violet)" }}>
+                    {d.val.toFixed(1)}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>{d.label}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
+              {scan.teeth.note} Aesthetic estimate from your smile capture — not a dental diagnosis.
+            </p>
+          </GlassCard>
+        )}
 
         {/* Nav */}
         <div style={{ display: "flex", gap: 12 }}>
