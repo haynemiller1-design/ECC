@@ -11,27 +11,27 @@ const FEATURES = [
   },
   {
     icon: "⊕",
-    title: "Symmetry Analysis",
-    desc: "68-point facial landmark mesh maps left-to-right balance across eyes, nose, cheekbones, and jaw.",
+    title: "Symmetry",
+    desc: "How balanced the left and right sides of your face are — across your eyes, nose, cheekbones, and jaw.",
     color: "var(--accent-cyan)",
   },
   {
     icon: "◻",
-    title: "Bone Structure Map",
-    desc: "Bizygomatic ratio, gonial angle, and chin projection scored against sex-specific reference norms.",
+    title: "Face Shape & Structure",
+    desc: "Your cheekbone width, jaw angle, and chin — compared with typical male or female proportions.",
     color: "var(--accent-green)",
   },
   {
     icon: "✦",
-    title: "Skin Protocol",
-    desc: "Evidence-based ingredient stacks and routine ordering calibrated to your age and skin type.",
+    title: "Skincare Plan",
+    desc: "A simple, evidence-based routine matched to your age and skin type.",
     color: "var(--accent-violet)",
   },
 ];
 
 const STEPS = [
   { n: "1", label: "Answer 4 quick questions", sub: "Age, sex, measurements, skin type — takes under a minute." },
-  { n: "2", label: "Take a selfie", sub: "No account. No upload. Your photo never leaves your device." },
+  { n: "2", label: "Scan your face", sub: "The camera guides you — front, sides, and a smile. Nothing leaves your device." },
   { n: "3", label: "Get your full report", sub: "Golden ratio score, symmetry map, bone metrics, and skincare plan." },
 ];
 

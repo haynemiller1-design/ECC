@@ -14,22 +14,23 @@ export function computeSymmetry(landmarks: LandmarkPoint[]): HemifaceDelta {
   }
 
   // Mirrored pairs [left_idx, right_idx]
+  // Ordered so the first five shown are the most recognizable, plain features.
   const mirrorPairs: [number, number, string][] = [
-    [0, 16, "Jaw Corners"],
+    [36, 45, "Eyes"],
+    [4, 12, "Cheekbones"],
+    [2, 14, "Jawline"],
+    [31, 35, "Nose"],
+    [48, 54, "Mouth"],
+    [0, 16, "Jaw Width"],
     [1, 15, "Lower Jaw"],
-    [2, 14, "Jaw Line"],
-    [3, 13, "Mandible"],
-    [4, 12, "Cheek Lower"],
-    [5, 11, "Cheek Mid"],
-    [6, 10, "Cheek Upper"],
-    [36, 45, "Eye Outer Canthus"],
-    [39, 42, "Eye Inner Canthus"],
-    [37, 44, "Eye Upper Lid"],
-    [41, 46, "Eye Lower Lid"],
-    [31, 35, "Nose Ala"],
-    [48, 54, "Mouth Corner"],
+    [3, 13, "Jaw"],
+    [5, 11, "Mid Cheeks"],
+    [6, 10, "Upper Cheeks"],
+    [39, 42, "Inner Eye Corners"],
+    [37, 44, "Upper Eyelids"],
+    [41, 46, "Lower Eyelids"],
     [49, 53, "Upper Lip"],
-    [50, 52, "Upper Lip Cupid"],
+    [50, 52, "Cupid's Bow"],
   ];
 
   // Facial midline: vertical line through nose bridge (pt 27) and chin (pt 8)

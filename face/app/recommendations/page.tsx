@@ -45,8 +45,8 @@ export default function RecommendationsPage() {
   }, [tele.skinType, tele.age]);
 
   const tabs = [
-    { id: "skin" as const, label: "Skin Protocol", badge: skinRecs.reduce((s, r) => s + r.ingredients.length, 0) },
-    { id: "bone" as const, label: "Bone & Structure", badge: boneRecs.length },
+    { id: "skin" as const, label: "Skincare", badge: skinRecs.reduce((s, r) => s + r.ingredients.length, 0) },
+    { id: "bone" as const, label: "Face Structure", badge: boneRecs.length },
   ];
 
   return (
@@ -58,7 +58,7 @@ export default function RecommendationsPage() {
           ← Back to Dashboard
         </button>
         <p style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 4 }}>
-          VisageIQ · Clinical Intelligence
+          VisageIQ · Recommendations
         </p>
         <h1 style={{
           fontSize: 26, fontWeight: 700,

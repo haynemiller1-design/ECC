@@ -53,12 +53,12 @@ export default function DashboardPage() {
               background: "linear-gradient(135deg, #8B5CF6, #06B6D4)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
             }}>
-              Metric Drilldown
+              Detailed Breakdown
             </h1>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <NeonBadge label={`φ ${grScore.toFixed(1)}`} color="violet" />
-            <NeonBadge label={scan.dimorphismMode === "male" ? "♂ Male Norms" : "♀ Female Norms"} color="cyan" />
+            <NeonBadge label={`Balance ${grScore.toFixed(1)}`} color="violet" />
+            <NeonBadge label={scan.dimorphismMode === "male" ? "Male reference" : "Female reference"} color="cyan" />
           </div>
         </div>
       </div>
@@ -79,7 +79,7 @@ export default function DashboardPage() {
           {/* Golden Ratio quick summary card */}
           <GlassCard>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600 }}>Golden Ratio Summary</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 600 }}>Proportions &amp; Balance</h3>
               <NeonBadge label={`${grScore.toFixed(1)} / 10`} color="violet" />
             </div>
             <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>

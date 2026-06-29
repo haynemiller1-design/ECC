@@ -59,7 +59,7 @@ export function computeGoldenRatioScore(landmarks: LandmarkPoint[]): GoldenRatio
   const trichionToNasion = dist(trichionEstimated, nasion);
 
   const r1: RatioResult = {
-    name: "Upper to Mid Facial Third",
+    name: "Upper Face Balance",
     actual: trichionToNasion / nasionToSubnasale,
     ideal: 1.0,
     score: 0,
@@ -69,7 +69,7 @@ export function computeGoldenRatioScore(landmarks: LandmarkPoint[]): GoldenRatio
   r1.score = scoreRatio(r1.actual, r1.ideal);
 
   const r2: RatioResult = {
-    name: "Mid to Lower Facial Third",
+    name: "Lower Face Balance",
     actual: nasionToSubnasale / subnasaleToGnathion,
     ideal: PHI,
     score: 0,
@@ -86,7 +86,7 @@ export function computeGoldenRatioScore(landmarks: LandmarkPoint[]): GoldenRatio
   const rightEyeWidth = dist(rightEyeInner, rightEyeOuter);
   const avgEyeWidth = (leftEyeWidth + rightEyeWidth) / 2;
   const r3: RatioResult = {
-    name: "Intercanthal / Eye Width",
+    name: "Eye Spacing",
     actual: intercanthalDist / avgEyeWidth,
     ideal: 1.0,
     score: 0,
@@ -101,7 +101,7 @@ export function computeGoldenRatioScore(landmarks: LandmarkPoint[]): GoldenRatio
   const noseWidth = dist(noseLeft, noseRight);
   const mouthWidth = dist(mouthLeft, mouthRight);
   const r4: RatioResult = {
-    name: "Nose Width / Mouth Width",
+    name: "Nose & Mouth Width",
     actual: noseWidth / mouthWidth,
     ideal: 1 / PHI, // ~0.618
     score: 0,

@@ -27,7 +27,7 @@ export default function RatioBreakdown({ ratios }: Props) {
           </div>
           <ProgressBar value={r.score * 10} color={gradeColor(r.score)} showValue={false} />
           <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-            {(r.deviation * 100).toFixed(1)}% deviation from ideal ratio
+            {(r.deviation * 100).toFixed(1)}% off from the ideal
           </p>
         </div>
       ))}

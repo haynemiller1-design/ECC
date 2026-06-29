@@ -17,12 +17,12 @@ export default function ProportionCard({ delta }: Props) {
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         <div style={{ flex: 1, textAlign: "center", padding: "16px", background: "rgba(16,185,129,0.06)", borderRadius: 8, border: "1px solid rgba(16,185,129,0.1)" }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: "var(--accent-green)" }}>{delta.leftScore.toFixed(1)}</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Left Hemiface</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Left Side</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", color: "var(--text-muted)", fontSize: 20 }}>⇆</div>
         <div style={{ flex: 1, textAlign: "center", padding: "16px", background: "rgba(16,185,129,0.06)", borderRadius: 8, border: "1px solid rgba(16,185,129,0.1)" }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: "var(--accent-green)" }}>{delta.rightScore.toFixed(1)}</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Right Hemiface</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Right Side</div>
         </div>
       </div>
 

@@ -59,8 +59,8 @@ export function computeBoneMetrics(
   ) / 10;
 
   const dimorphismNote = sex === "male"
-    ? "Assessed against masculine norm: wider bizygomatic, sharper ~115° gonial angle, pronounced chin projection."
-    : "Assessed against feminine norm: narrower bizygomatic, softer ~120° gonial angle, delicate chin taper.";
+    ? "Compared with typical male proportions: broader cheekbones, a sharper jaw angle, and a stronger chin."
+    : "Compared with typical female proportions: softer cheekbones, a gentler jaw angle, and a more tapered chin.";
 
   return { bizygomaticScore, gonialScore, jawlineScore, aggregateBoneScore, dimorphismNote };
 }

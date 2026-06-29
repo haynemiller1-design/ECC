@@ -72,7 +72,7 @@ export default function ResultsPage() {
             Biometric Report
           </h1>
           <p style={{ color: "var(--text-muted)", marginTop: 8, fontSize: 14 }}>
-            Deterministic golden ratio analysis · {tele.sex === "male" ? "♂ Male" : "♀ Female"} reference model
+            Your facial analysis · {tele.sex === "male" ? "Male" : "Female"} reference
           </p>
         </div>
 
@@ -92,10 +92,11 @@ export default function ResultsPage() {
             ) : (
               <>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                  <NeonBadge label={`φ ${grScore!.aggregate.toFixed(1)}`} color="violet" />
-                  <NeonBadge label={`⊕ ${symScore!.symmetryScore.toFixed(1)}`} color="cyan" />
-                  <NeonBadge label={`◻ ${boneScore!.aggregateBoneScore.toFixed(1)}`} color="green" />
-                  {harmony && <NeonBadge label={`✶ ${harmony.aggregate.toFixed(1)}`} color="violet" />}
+                  <NeonBadge label={`Balance ${grScore!.aggregate.toFixed(1)}`} color="violet" />
+                  <NeonBadge label={`Symmetry ${symScore!.symmetryScore.toFixed(1)}`} color="cyan" />
+                  <NeonBadge label={`Structure ${boneScore!.aggregateBoneScore.toFixed(1)}`} color="green" />
+                  {harmony && <NeonBadge label={`Features ${harmony.aggregate.toFixed(1)}`} color="violet" />}
+                  {scan.teeth && <NeonBadge label={`Smile ${scan.teeth.aggregate.toFixed(1)}`} color="green" />}
                 </div>
                 <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7 }}>
                   {boneScore?.dimorphismNote}
@@ -149,8 +150,8 @@ export default function ResultsPage() {
         {/* Golden ratio breakdown */}
         <GlassCard style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Golden Ratio Analysis</h2>
-            <NeonBadge label={`φ = 1.618`} color="violet" />
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Proportions &amp; Balance</h2>
+            {!loading && <NeonBadge label={`${grScore!.aggregate.toFixed(1)} / 10`} color="violet" />}
           </div>
           {loading ? <SkeletonLoader count={4} height={40} /> : <RatioBreakdown ratios={grScore!.ratios} />}
         </GlassCard>
@@ -158,8 +159,8 @@ export default function ResultsPage() {
         {/* Symmetry — rated out of 10 per feature */}
         <GlassCard style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Facial Symmetry</h2>
-            {!loading && <NeonBadge label={`⊕ ${symScore!.symmetryScore.toFixed(1)}`} color="cyan" />}
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Symmetry (Left vs Right)</h2>
+            {!loading && <NeonBadge label={`${symScore!.symmetryScore.toFixed(1)} / 10`} color="cyan" />}
           </div>
           {loading ? <SkeletonLoader count={2} height={40} /> : (
             <>
@@ -186,8 +187,8 @@ export default function ResultsPage() {
         {/* Facial Harmony — additional aesthetic measures */}
         <GlassCard style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Facial Harmony</h2>
-            {!loading && harmony && <NeonBadge label={`✶ ${harmony.aggregate.toFixed(1)}`} color="violet" />}
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Feature Harmony</h2>
+            {!loading && harmony && <NeonBadge label={`${harmony.aggregate.toFixed(1)} / 10`} color="violet" />}
           </div>
           {loading || !harmony ? <SkeletonLoader count={3} height={36} /> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -213,8 +214,8 @@ export default function ResultsPage() {
         {!loading && scan.teeth && (
           <GlassCard style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600 }}>Smile & Teeth</h2>
-              <NeonBadge label={`☺ ${scan.teeth.aggregate.toFixed(1)}`} color="green" />
+              <h2 style={{ fontSize: 16, fontWeight: 600 }}>Smile &amp; Teeth</h2>
+              <NeonBadge label={`${scan.teeth.aggregate.toFixed(1)} / 10`} color="green" />
             </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
               {[

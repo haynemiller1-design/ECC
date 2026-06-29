@@ -10,22 +10,22 @@ export default function BoneStructureCard({ metrics }: Props) {
   return (
     <GlassCard glow="violet">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>Bone Structure</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 600 }}>Face Shape &amp; Structure</h3>
         <NeonBadge label={`${metrics.aggregateBoneScore.toFixed(1)} / 10`} color="violet" />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div>
-          <ProgressBar value={metrics.bizygomaticScore * 10} color="violet" label="Bizygomatic Ratio" />
-          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Cheekbone-to-cheekbone width vs face height</p>
+          <ProgressBar value={metrics.bizygomaticScore * 10} color="violet" label="Cheekbone Width" />
+          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>How wide your cheekbones are vs face length</p>
         </div>
         <div>
-          <ProgressBar value={metrics.gonialScore * 10} color="cyan" label="Gonial Angle" />
-          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Jaw angle sharpness vs dimorphic norm</p>
+          <ProgressBar value={metrics.gonialScore * 10} color="cyan" label="Jaw Angle" />
+          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>How sharp or soft the angle of your jaw is</p>
         </div>
         <div>
-          <ProgressBar value={metrics.jawlineScore * 10} color="green" label="Chin Projection" />
-          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Chin prominence relative to face height</p>
+          <ProgressBar value={metrics.jawlineScore * 10} color="green" label="Chin &amp; Jaw" />
+          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>How much your chin projects forward</p>
         </div>
       </div>
 

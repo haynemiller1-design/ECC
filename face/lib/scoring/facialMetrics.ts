@@ -60,11 +60,11 @@ export function computeFacialMetrics(lm: LandmarkPoint[]): FacialMetrics {
   const mouthNose = devScore(Math.abs(mnRatio - 1.5), 0.8);
 
   const items: MetricItem[] = [
-    { name: "Canthal Tilt", score: canthalTilt, detail: `Eye angle ${avgTilt >= 0 ? "+" : ""}${avgTilt.toFixed(1)}° (ideal ≈ +6° upward)` },
-    { name: "Facial Fifths", score: facialFifths, detail: "Horizontal balance across five eye-widths" },
-    { name: "Nasal Harmony", score: nasalHarmony, detail: "Nose width vs eye spacing" },
-    { name: "Lip Proportion", score: lipProportion, detail: "Lower-to-upper lip fullness ratio" },
-    { name: "Mouth–Nose", score: mouthNose, detail: "Mouth width vs nose width" },
+    { name: "Eye Tilt", score: canthalTilt, detail: `Eye angle ${avgTilt >= 0 ? "+" : ""}${avgTilt.toFixed(1)}° (a slight upward tilt is ideal)` },
+    { name: "Face Width Balance", score: facialFifths, detail: "Even spacing across the width of the face" },
+    { name: "Nose & Eyes", score: nasalHarmony, detail: "Nose width vs the space between your eyes" },
+    { name: "Lip Fullness", score: lipProportion, detail: "Balance of lower lip to upper lip" },
+    { name: "Mouth & Nose", score: mouthNose, detail: "Mouth width vs nose width" },
   ];
   const aggregate = Math.round(items.reduce((s, it) => s + it.score, 0) / items.length * 10) / 10;
   return { items, aggregate };
