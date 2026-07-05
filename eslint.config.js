@@ -30,5 +30,17 @@ module.exports = [
         languageOptions: {
             sourceType: 'module'
         }
+    },
+    {
+        files: ['website/js/**/*.js'],
+        languageOptions: {
+            sourceType: 'script',
+            globals: {
+                ...globals.browser,
+                OK: 'writable',
+                OMNIKIT_CONFIG: 'readonly',
+                OMNIKIT_TOOLS: 'readonly'
+            }
+        }
     }
 ];
