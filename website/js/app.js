@@ -66,20 +66,50 @@
 
   // ---------- tool grid ----------
   var grid = document.getElementById('tool-grid');
+  var cards = [];
   OMNIKIT_TOOLS.forEach(function (tool) {
     var card = document.createElement('button');
     card.className = 'tool-card';
     card.innerHTML =
-      (tool.proFeature ? '<span class="tool-pro-tag">⚡ PRO+</span>' : '') +
-      '<div class="tool-icon">' + tool.icon + '</div>' +
+      (tool.proFeature ? '<span class="tool-pro-tag">PRO</span>' : '') +
+      '<div class="tool-icon">' + OK.icon(tool.icon) + '</div>' +
       '<div class="tool-name">' + OK.esc(tool.name) + '</div>' +
       '<div class="tool-desc">' + OK.esc(tool.desc) + '</div>';
+    card.dataset.search = (tool.name + ' ' + tool.desc + ' ' + tool.id).toLowerCase();
     card.addEventListener('click', function () { openTool(tool); });
     grid.appendChild(card);
+    cards.push(card);
+  });
+
+  // ---------- tool search ----------
+  var searchInput = document.getElementById('tool-search');
+  var noResults = document.getElementById('no-results');
+  var scrolledOnce = false;
+  searchInput.addEventListener('input', function () {
+    var q = searchInput.value.trim().toLowerCase();
+    var visible = 0;
+    cards.forEach(function (card) {
+      var match = !q || card.dataset.search.indexOf(q) !== -1;
+      card.hidden = !match;
+      if (match) visible++;
+    });
+    noResults.hidden = visible > 0;
+    if (q && !scrolledOnce) {
+      scrolledOnce = true;
+      document.getElementById('tools').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    }
   });
 
   function openTool(tool) {
-    document.getElementById('tool-modal-title').textContent = tool.icon + '  ' + tool.name;
+    document.getElementById('tool-modal-title').innerHTML = OK.icon(tool.icon) + '<span>' + OK.esc(tool.name) + '</span>';
     var bodyEl = document.getElementById('tool-modal-body');
     bodyEl.innerHTML = '';
     tool.render(bodyEl);
@@ -117,11 +147,11 @@
     var key = input.value.trim().toUpperCase();
     if (/^OMNI(-[A-Z0-9]{4}){3}$/.test(key)) {
       setPro(true);
-      msg.textContent = '✓ Pro activated on this device. Welcome aboard!';
+      msg.textContent = 'Pro activated on this device. Welcome aboard!';
       msg.className = 'license-msg ok';
-      setTimeout(function () { hide('upgrade-modal'); OK.toast('⚡ Pro unlocked'); }, 900);
+      setTimeout(function () { hide('upgrade-modal'); OK.toast('Pro unlocked'); }, 900);
     } else {
-      msg.textContent = '✗ That does not look like a valid key (OMNI-XXXX-XXXX-XXXX).';
+      msg.textContent = 'That does not look like a valid key (OMNI-XXXX-XXXX-XXXX).';
       msg.className = 'license-msg err';
     }
   });

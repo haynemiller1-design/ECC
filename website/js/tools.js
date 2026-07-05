@@ -11,7 +11,7 @@ OK.esc = function (s) {
 
 OK.copy = function (text) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(function () { OK.toast('Copied ✓'); }, function () { OK.toast('Copy failed'); });
+    navigator.clipboard.writeText(text).then(function () { OK.toast('Copied to clipboard'); }, function () { OK.toast('Copy failed'); });
   } else {
     OK.toast('Clipboard unavailable');
   }
@@ -34,6 +34,32 @@ OK.download = function (filename, text, mime) {
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
 };
 
+// Inline SVG icon set (stroke style, currentColor).
+OK.ICONS = {
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  braces: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
+  binary: '<rect x="14" y="14" width="4" height="6" rx="2"/><rect x="6" y="4" width="4" height="6" rx="2"/><path d="M6 20h4"/><path d="M14 10h4"/><path d="M6 14h2v6"/><path d="M14 4h2v6"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
+  key: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/>',
+  tag: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',
+  chart: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  type: '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>',
+  palette: '<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',
+  diff: '<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+  ruler: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>',
+  code: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'
+};
+
+OK.icon = function (name) {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    (OK.ICONS[name] || OK.ICONS.braces) + '</svg>';
+};
+
 // Adds a floating "Copy" button to an output box.
 OK.copyBtn = function (box, getText) {
   var b = document.createElement('button');
@@ -49,14 +75,14 @@ window.OMNIKIT_TOOLS = [
   // ============ 1. IMAGE COMPRESSOR ============
   {
     id: 'image',
-    icon: '🖼️',
+    icon: 'image',
     name: 'Image Compressor',
     desc: 'Compress & convert PNG/JPEG/WebP with a quality slider. Files never leave your device.',
     proFeature: 'Batch compression',
     render: function (body) {
       body.innerHTML =
         '<div class="tool-ui">' +
-        '  <div class="drop-zone" id="img-drop">📁 Drop images here or click to choose<br><small>Free: one at a time · Pro: batch</small></div>' +
+        '  <div class="drop-zone" id="img-drop">' + OK.icon('upload') + '<br>Drop images here or click to choose<br><small>Free: one at a time · Pro: batch</small></div>' +
         '  <input type="file" id="img-file" accept="image/*" multiple hidden>' +
         '  <div class="tool-row">' +
         '    <div><label>Format</label><select id="img-fmt"><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option><option value="image/png">PNG</option></select></div>' +
@@ -133,7 +159,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 2. JSON FORMATTER ============
   {
     id: 'json',
-    icon: '{ }',
+    icon: 'braces',
     name: 'JSON Formatter',
     desc: 'Validate, pretty-print and minify JSON instantly.',
     render: function (body) {
@@ -159,7 +185,7 @@ window.OMNIKIT_TOOLS = [
           OK.copyBtn(out, function () { return out.textContent; });
           OK.bumpOps();
         } catch (e) {
-          out.textContent = '✗ ' + e.message;
+          out.textContent = 'Error: ' + e.message;
           out.classList.add('out-err');
         }
       }
@@ -171,7 +197,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 3. BASE64 ============
   {
     id: 'b64',
-    icon: '🔤',
+    icon: 'binary',
     name: 'Base64 Encode / Decode',
     desc: 'UTF-8 safe Base64 encoding and decoding for any text.',
     render: function (body) {
@@ -198,7 +224,7 @@ window.OMNIKIT_TOOLS = [
           var bin = '';
           bytes.forEach(function (b) { bin += String.fromCharCode(b); });
           show(btoa(bin));
-        } catch (e) { show('✗ ' + e.message, true); }
+        } catch (e) { show('Error: ' + e.message, true); }
       });
       body.querySelector('#b64-dec').addEventListener('click', function () {
         try {
@@ -206,7 +232,7 @@ window.OMNIKIT_TOOLS = [
           var bytes = new Uint8Array(bin.length);
           for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
           show(new TextDecoder().decode(bytes));
-        } catch (_e) { show('✗ Invalid Base64 input', true); }
+        } catch (_e) { show('Error: invalid Base64 input', true); }
       });
     }
   },
@@ -214,7 +240,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 4. URL ENCODER ============
   {
     id: 'url',
-    icon: '🔗',
+    icon: 'link',
     name: 'URL Encode / Decode',
     desc: 'Percent-encode and decode URLs and query strings.',
     render: function (body) {
@@ -238,7 +264,7 @@ window.OMNIKIT_TOOLS = [
           OK.bumpOps();
         } catch (e) {
           out.classList.add('out-err');
-          out.textContent = '✗ ' + e.message;
+          out.textContent = 'Error: ' + e.message;
         }
       }
       body.querySelector('#url-enc').addEventListener('click', function () { show(encodeURIComponent); });
@@ -249,7 +275,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 5. HASH GENERATOR ============
   {
     id: 'hash',
-    icon: '#️⃣',
+    icon: 'hash',
     name: 'Hash Generator',
     desc: 'SHA-1, SHA-256, SHA-384 & SHA-512 digests via native WebCrypto.',
     render: function (body) {
@@ -288,7 +314,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 6. PASSWORD GENERATOR ============
   {
     id: 'pass',
-    icon: '🔑',
+    icon: 'key',
     name: 'Password Generator',
     desc: 'Cryptographically secure passwords with a live entropy meter.',
     proFeature: 'Bulk generation',
@@ -349,7 +375,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 7. UUID GENERATOR ============
   {
     id: 'uuid',
-    icon: '🆔',
+    icon: 'tag',
     name: 'UUID Generator',
     desc: 'RFC 4122 v4 UUIDs, single or in bulk.',
     proFeature: 'Bulk generation',
@@ -391,7 +417,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 8. WORD COUNTER ============
   {
     id: 'words',
-    icon: '📊',
+    icon: 'chart',
     name: 'Word Counter',
     desc: 'Words, characters, sentences and reading time — live as you type.',
     render: function (body) {
@@ -425,7 +451,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 9. CASE CONVERTER ============
   {
     id: 'case',
-    icon: '🔠',
+    icon: 'type',
     name: 'Case Converter',
     desc: 'UPPER, lower, Title, camelCase, snake_case, kebab-case & more.',
     render: function (body) {
@@ -471,9 +497,9 @@ window.OMNIKIT_TOOLS = [
   // ============ 10. COLOR STUDIO ============
   {
     id: 'color',
-    icon: '🎨',
+    icon: 'palette',
     name: 'Color Studio',
-    desc: 'Convert HEX ↔ RGB ↔ HSL and generate a full shade palette.',
+    desc: 'Convert HEX, RGB & HSL and generate a full shade palette.',
     proFeature: 'Palette export',
     render: function (body) {
       body.innerHTML =
@@ -484,7 +510,7 @@ window.OMNIKIT_TOOLS = [
         '  </div>' +
         '  <div class="tool-row" id="col-formats"></div>' +
         '  <div class="swatch-row" id="col-swatches" style="padding-bottom:1.4rem"></div>' +
-        '  <button class="btn btn-ghost btn-sm" id="col-export" style="justify-self:start" hidden>Export palette (CSS) ⚡Pro</button>' +
+        '  <button class="btn btn-ghost btn-sm" id="col-export" style="justify-self:start" hidden>Export palette (CSS) — Pro</button>' +
         '</div>';
       var formats = body.querySelector('#col-formats');
       var swatches = body.querySelector('#col-swatches');
@@ -582,7 +608,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 11. TEXT DIFF ============
   {
     id: 'diff',
-    icon: '↔️',
+    icon: 'diff',
     name: 'Text Diff',
     desc: 'Compare two texts line-by-line with highlighted changes.',
     proFeature: 'Export as .patch',
@@ -595,7 +621,7 @@ window.OMNIKIT_TOOLS = [
         '  </div>' +
         '  <div class="tool-row">' +
         '    <button class="btn btn-primary btn-sm" id="diff-go">Compare</button>' +
-        '    <button class="btn btn-ghost btn-sm" id="diff-export" hidden>Export .patch ⚡Pro</button>' +
+        '    <button class="btn btn-ghost btn-sm" id="diff-export" hidden>Export .patch — Pro</button>' +
         '  </div>' +
         '  <div class="out-box diff-view" id="diff-out">Diff appears here</div>' +
         '</div>';
@@ -640,7 +666,7 @@ window.OMNIKIT_TOOLS = [
           out.appendChild(line);
           if (row[0] !== ' ') changed++;
         });
-        if (!changed) { out.textContent = '✓ Texts are identical'; }
+        if (!changed) { out.textContent = 'No differences — texts are identical'; }
         exportBtn.hidden = false;
         OK.bumpOps();
       });
@@ -655,7 +681,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 12. LOREM IPSUM ============
   {
     id: 'lorem',
-    icon: '📝',
+    icon: 'file',
     name: 'Lorem Ipsum',
     desc: 'Placeholder text by the paragraph, sentence or word.',
     render: function (body) {
@@ -702,7 +728,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 13. UNIT CONVERTER ============
   {
     id: 'unit',
-    icon: '📏',
+    icon: 'ruler',
     name: 'Unit Converter',
     desc: 'Length, weight, temperature and data — converted live.',
     render: function (body) {
@@ -766,7 +792,7 @@ window.OMNIKIT_TOOLS = [
   // ============ 14. MARKDOWN PREVIEW ============
   {
     id: 'md',
-    icon: '📄',
+    icon: 'code',
     name: 'Markdown Preview',
     desc: 'Live-render Markdown to clean HTML as you type.',
     render: function (body) {
@@ -837,9 +863,9 @@ window.OMNIKIT_TOOLS = [
   // ============ 15. TIMESTAMP CONVERTER ============
   {
     id: 'epoch',
-    icon: '⏱️',
+    icon: 'clock',
     name: 'Timestamp Converter',
-    desc: 'Unix epoch ↔ human-readable dates, with a live clock.',
+    desc: 'Unix epoch to human-readable dates and back, with a live clock.',
     render: function (body) {
       body.innerHTML =
         '<div class="tool-ui">' +
@@ -865,7 +891,7 @@ window.OMNIKIT_TOOLS = [
         else d = new Date(raw);
         if (isNaN(d.getTime())) {
           out.classList.add('out-err');
-          out.textContent = '✗ Could not parse that as an epoch or a date';
+          out.textContent = 'Error: could not parse that as an epoch or a date';
           return;
         }
         out.classList.remove('out-err');
