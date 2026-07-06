@@ -37,9 +37,20 @@ module.exports = [
             sourceType: 'script',
             globals: {
                 ...globals.browser,
-                OK: 'writable',
+                PF: 'writable',
                 OMNIKIT_CONFIG: 'readonly',
-                OMNIKIT_TOOLS: 'readonly'
+                PF_MODELS: 'writable',
+                PF_estimateTokens: 'writable',
+                PF_fmtUSD: 'writable'
+            }
+        }
+    },
+    {
+        files: ['website/sw.js'],
+        languageOptions: {
+            sourceType: 'script',
+            globals: {
+                ...globals.serviceworker
             }
         }
     }

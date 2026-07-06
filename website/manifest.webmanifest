@@ -1,0 +1,18 @@
+{
+  "name": "PromptForge — Prompt Workbench",
+  "short_name": "PromptForge",
+  "description": "The local-first workbench for prompt engineering. Draft, template, cost, version and diff LLM prompts entirely in your browser.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%230a0a0f'/%3E%3Cpath fill='%237c5cff' d='M300 96 416 212 240 388 128 404 144 292z'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

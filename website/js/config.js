@@ -9,7 +9,7 @@
  *    including how license keys are issued to buyers.
  */
 window.OMNIKIT_CONFIG = {
-  productName: 'OmniKit',
+  productName: 'PromptForge',
 
   // Stripe Payment Link URLs. Leave empty to show a "coming soon" toast
   // instead of redirecting (useful while developing).
@@ -17,14 +17,10 @@ window.OMNIKIT_CONFIG = {
   stripeMonthlyUrl: '',
 
   prices: {
-    lifetime: '$29',
-    monthly: '$4/mo'
+    lifetime: '$39',   // Pro, one-time
+    monthly: '$8/seat' // Team, per seat / month
   },
 
-  // Free-tier limits (Pro removes them).
-  limits: {
-    batchImages: 1,     // images processed at once
-    bulkUuids: 10,      // UUIDs per generation
-    bulkPasswords: 5    // passwords per generation
-  }
+  // Free-tier limit (Pro removes it). Enforced in promptforge.js.
+  freeLibraryLimit: 25
 };
